@@ -7,17 +7,43 @@ work and ideas, which you, Claude and ChatGPT all read and write.
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![MCP: Claude, ChatGPT, Gemini](https://img.shields.io/badge/MCP-Claude%20%C2%B7%20ChatGPT%20%C2%B7%20Gemini-8A2BE2)](docs/MCP_SERVER.md)
 
-![A Cardlake feed on a Monday morning: two work follow-ups pinned at the top, with filters for favorites and snoozed cards.](docs/media/cardlake-feed.webp)
+**[Get started](#get-started)** · [What it does](#what-it-does) · [Looking after your Cardlake](#looking-after-your-cardlake) · [For developers](#for-developers)
 
-https://github.com/user-attachments/assets/10d1ce6c-f12a-42bf-aed6-dba16530b934
-
-Open source (AGPL-3.0) and yours to run on Vercel + Neon in a few minutes.
+## Get started
 
 Don't want to host it yourself? Use Cardlake at [cardlake.app](https://cardlake.app).
 
-Cardlake turns everything you don't want to forget (reminders, articles to read, family updates, bookmarks, misc notes, and your GitHub issues) into a single feed, instead of a dozen apps you never open.
+To run your own: free on Vercel's and Neon's free plans, about 10 minutes, no
+terminal.
+
+1. **Sign up at Vercel** at [vercel.com/signup](https://vercel.com/signup) with
+   **Continue with GitHub**. No GitHub account? GitHub's sign-in page has
+   **Create an account** ([github.com/signup](https://github.com/signup)).
+   Finish Vercel's sign-up, including its code, until you see its dashboard.
+2. **Click Deploy**, then **Create**, add **Neon** (your database) and
+   **Blob** (your attachments) on their free plans, and **Deploy**:
+
+   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcardleforall%2Fcardlakeforall&project-name=cardlake-self-hosted&repository-name=cardlake-self-hosted&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
+
+   If Vercel shows its dashboard instead, come back and click the button again.
+3. **Open your site and set your password** right away: for your security,
+   setup is open for one hour after your site first starts, then it locks so
+   nobody else can claim it. (Missed it? The setup page explains how to reopen
+   it.)
+4. **Optional: connect Claude or ChatGPT.** In Cardlake, click **Connect AI**.
+
+**New to Vercel or GitHub?** The [step-by-step guide](docs/SETUP_GUIDE.md) has
+a picture for every step.
 
 ## What it does
+
+![A Cardlake feed on a Monday morning: two work follow-ups pinned at the top, with filters for favorites and snoozed cards.](docs/media/cardlake-feed.webp)
+
+Cardlake turns everything you don't want to forget (reminders, articles to
+read, family updates, bookmarks, notes, and your GitHub issues) into a single
+feed, instead of a dozen apps you never open.
+
+https://github.com/user-attachments/assets/10d1ce6c-f12a-42bf-aed6-dba16530b934
 
 - **Talk to it from your AI.** Tell Claude or ChatGPT "remind me Wednesday at
   10" or "what's on today?" and it reads and writes your feed over
@@ -33,60 +59,37 @@ Cardlake turns everything you don't want to forget (reminders, articles to read,
 - **Yours.** Your own database, your own deployment, one account: yours.
   Open source under AGPL-3.0.
 
-## Why Cardlake
+### Why Cardlake
 
 Notes apps, task apps and read-later apps each hold a piece of what you meant
 to come back to, and you check none of them. Cardlake is the one place it all
-lands, and the place your AI writes to when
-you ask it to remember something. Because it runs on your own Vercel and
-Neon accounts, what you and your AI save stays with you.
+lands, and the place your AI writes to when you ask it to remember something.
+Because your own copy runs on your own Vercel and Neon accounts, what you and
+your AI save stays with you.
 
-## Why a feed, not folders
+### Why a feed, not folders
 
 Capture, one vault, review, and streaks each map to how memory and habits work. An open loop costs attention until it's captured somewhere trustworthy, one system beats maintaining seven, and unreviewed things fade fast unless something resurfaces them.
 
-## Run your own
+## Looking after your Cardlake
 
-Your own Cardlake, free on Vercel's and Neon's free plans, in about 10 minutes.
-You won't need a terminal, a password generator or Google Cloud.
+### It's yours alone
 
-1. **Make a GitHub account** at [github.com/signup](https://github.com/signup),
-   if you don't have one. Cardlake's code lives there, in your own copy.
-2. **Make a Vercel account** at [vercel.com/signup](https://vercel.com/signup)
-   and choose **Continue with GitHub**. The free Hobby plan is enough.
-3. **Click the button:**
-
-   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcardleforall%2Fcardlakeforall&project-name=cardlake-self-hosted&repository-name=cardlake-self-hosted&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
-
-   Vercel then asks you a few things. Accept what it suggests, or rename the
-   project and repository if you like:
-   - **Create Git Repository:** keeps a copy of Cardlake in your GitHub account.
-   - **Neon:** your database. Choose the free plan and create it.
-   - **Blob:** where files you attach to cards are kept. Create it.
-
-   Then click **Deploy** and wait a minute or two.
-
-4. **Open your site and set your password.** When Vercel says it's done,
-   click the picture of your site, or **Visit**. Cardlake asks for your name,
-   email and a password: this is your account. **Do this right away:** for
-   your security, setup is open for one hour after your site first starts,
-   then it locks, so nobody else can claim it. (Missed it? The setup page
-   explains how to reopen it.)
-
-5. **Optional: connect Claude or ChatGPT.** In Cardlake, click **Connect AI**
-   and follow the steps. Your assistant can then read and add cards for you.
-
-**It's yours alone.** Your Cardlake has one account, yours. There's nobody to
+Your Cardlake has one account, yours. There's nobody to
 administer: no sign-up, no user list, no invites. Sign in with the same
 email and password on your phone and other computers.
 
-**Forgot your password?** In Vercel, open your project, then **Settings** and
+### Forgot your password?
+
+In Vercel, open your project, then **Settings** and
 **Environment Variables**. Add `CARDLE_SETUP_OPEN` with the value `1`, save,
 and redeploy (**Deployments**, **⋯**, **Redeploy**). Open `/setup` on your
 site and set a new password with the same email: you keep all your cards.
 Then delete `CARDLE_SETUP_OPEN` and redeploy again.
 
-**Getting updates.** Your copy doesn't update by itself. When a new version
+### Getting updates
+
+Your copy doesn't update by itself. When a new version
 is out, Cardlake shows **Update available** at the top; it leads to your
 Cardlake's `/updates` page. The first time, click **Turn on
 updates** there: GitHub opens with the update file filled in, ready to commit. After
@@ -97,12 +100,16 @@ yourself, it stops rather than erase your changes. To also hear about new
 versions by email, open [Cardlake on GitHub](https://github.com/cardleforall/cardlakeforall) and
 choose **Watch**, **Custom**, **Releases**.
 
-**Everything else is optional.** Cardlake makes its own secret keys and sets
+### Settings
+
+Everything else is optional. Cardlake makes its own secret keys and sets
 up its own database. [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) lists the
 settings you can add later, such as a custom domain, and
 [docs/ADMIN.md](docs/ADMIN.md) covers running it.
 
-## Quick start (local development)
+## For developers
+
+### Quick start (local development)
 
 ```bash
 git clone https://github.com/cardleforall/cardlakeforall.git
@@ -114,7 +121,7 @@ npm run dev
 
 This starts a local dev server at `http://localhost:3000` that serves `public/` statically and routes `/api/*` to the same handler files Vercel uses in production; no separate build step, no `vercel dev` required. Point `DATABASE_URL` at a database of your own, never one with real data.
 
-## Development
+### Development
 
 ```bash
 npm ci
@@ -125,7 +132,7 @@ npm test
 
 `npm test` covers the build; the actual test suite (`tests/unit/` offline unit tests, `tests/sit/` system integration tests against a deployment) is run separately via `npm run test:lite` / `npm run test:full`; see [tests/README.md](tests/README.md) for the unit/SIT split and when to run which tier.
 
-## Architecture
+### Architecture
 
 - **Frontend**: `public/vault/index.html` is a committed, hand-maintained shell (not generated from markdown or any other source), progressively enhanced with plain JS in `public/vault/assets/`.
 - **Backend**: Vercel serverless functions in `api/`, consolidated per resource area to stay within Vercel's Hobby function-count limit (see `.vercelignore` and the comments in `api/vault.js` / `api/auth.js`).
@@ -134,7 +141,7 @@ npm test
 - **Database**: Neon Postgres. Schema lives in `schema-v2.sql` and applies itself on the first request after a deploy.
 - **MCP server**: `api/mcp.js` + `api/_lib/mcp-tools.js` expose every card type and feed action (snooze, pin, favorite) to any MCP-compatible AI assistant. See [docs/MCP_SERVER.md](docs/MCP_SERVER.md).
 
-## Deployment
+### Deployment
 
 Deployment is GitHub-to-Vercel: pushes to the connected `main` branch create production deployments; pull requests create previews. See [DEPLOY.md](DEPLOY.md).
 
