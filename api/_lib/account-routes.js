@@ -10,6 +10,7 @@
 //   POST /api/auth/sign-in    { email, password }
 //   POST /api/auth/sign-out-everywhere   signs every device out, this one too
 //   GET  /api/auth/instance   the owner's generated sync token (Connect AI)
+//                             and this copy's GitHub repository (/updates)
 'use strict';
 
 // Looked up at call time, like session-guard.js: tests and tools swap getSql.
@@ -119,7 +120,19 @@ function instanceHandler(req, res) {
   if (!getSessionPayload(req)?.email) { res.status(401).json({ error: 'Sign in first.', code: 'AUTH_REQUIRED' }); return; }
   req.cardleEvent = false;
   const source = secretSource('SYNC_TOKEN');
-  res.status(200).json({ sync_token: { source, value: source === 'generated' ? instanceSecret('SYNC_TOKEN') : null } });
+  res.status(200).json({
+    sync_token: { source, value: source === 'generated' ? instanceSecret('SYNC_TOKEN') : null },
+    repository: githubRepository(),
+  });
+}
+
+// The GitHub repository this copy deploys from, so /updates can link to it.
+// Vercel sets these on deployments from Git; anywhere else it's null and the
+// page asks the owner instead.
+function githubRepository() {
+  const { VERCEL_GIT_PROVIDER: provider, VERCEL_GIT_REPO_OWNER: owner, VERCEL_GIT_REPO_SLUG: slug } = process.env;
+  if (provider !== 'github' || !owner || !slug) return null;
+  return { full_name: `${owner}/${slug}`, branch: process.env.VERCEL_GIT_COMMIT_REF || 'main' };
 }
 
 module.exports = { PASSWORD_SIGN_IN_LIMIT: LIMITS.signIn, configHandler, instanceHandler, setupHandler, signInHandler, signOutEverywhereHandler };

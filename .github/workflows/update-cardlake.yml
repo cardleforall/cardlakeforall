@@ -39,5 +39,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           flag=""
           if [ "$OVERWRITE" = "true" ]; then flag="--overwrite"; fi
-          bash scripts/update_from_upstream.sh "$(git rev-parse FETCH_HEAD)" $flag
+          # The latest Cardlake's script, not this copy's, so a fix to
+          # updating reaches copies on their next update.
+          git show FETCH_HEAD:scripts/update_from_upstream.sh > "$RUNNER_TEMP/update_from_upstream.sh"
+          bash "$RUNNER_TEMP/update_from_upstream.sh" "$(git rev-parse FETCH_HEAD)" $flag
           git push origin "HEAD:$GITHUB_REF_NAME"

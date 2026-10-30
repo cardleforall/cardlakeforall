@@ -11,7 +11,8 @@
 # and loses the owner's changes.
 #
 # Workflow files are left as they are: the workflow's token isn't allowed
-# to change them.
+# to change them. The Deploy button's copy starts without them and without
+# .env.example, so neither counts as a change.
 set -euo pipefail
 
 upstream="${1:?usage: update_from_upstream.sh <cardlake-commit> [--overwrite]}"
@@ -24,9 +25,12 @@ say() {
 }
 
 # A fingerprint of every file's path and content in a commit, except the
-# workflows. File modes are left out, in case a copy didn't keep them.
+# workflows and .env.example. File modes are left out, in case a copy didn't
+# keep them.
 fingerprint() {
-  git ls-tree -r "$1" | cut -d' ' -f3- | { grep -v -F "$(printf '\t')$workflows/" || true; } | git hash-object --stdin
+  git ls-tree -r "$1" | cut -d' ' -f3- \
+    | { grep -v -F -e "$(printf '\t')$workflows/" -e "$(printf '\t').env.example" || true; } \
+    | git hash-object --stdin
 }
 
 mine="$(fingerprint HEAD)"
