@@ -48,6 +48,17 @@ class DeployButtonTests(unittest.TestCase):
         # to deploy; the workaround for a private repository is gone.
         self.assertNotIn("Without the button", readme)
 
+    def test_the_step_by_step_guide_has_the_same_button_and_its_pictures(self):
+        guide_path = ROOT / "docs" / "SETUP_GUIDE.md"
+        self.assertIn("(docs/SETUP_GUIDE.md)", source(README))
+        guide = source(guide_path)
+        button = re.search(r"\(https://vercel\.com/new/clone\?[^)\s]+\)", source(README)).group(0)
+        self.assertIn(button, guide, "the guide's Deploy button must match the README's")
+        pictures = re.findall(r'src="(media/setup/[^"]+)"', guide)
+        self.assertEqual(len(pictures), 3)
+        for picture in pictures:
+            self.assertTrue((guide_path.parent / picture).is_file(), picture)
+
 
 if __name__ == "__main__":
     unittest.main()

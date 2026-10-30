@@ -48,7 +48,8 @@ Capture, one vault, review, and streaks each map to how memory and habits work. 
 ## Run your own
 
 Your own Cardlake, free on Vercel's and Neon's free plans, in about 10 minutes.
-You won't need a terminal, a password generator or Google Cloud.
+You won't need a terminal, a password generator or Google Cloud. Prefer
+pictures? Follow the [step-by-step guide](docs/SETUP_GUIDE.md).
 
 1. **Sign up at Vercel first,** at [vercel.com/signup](https://vercel.com/signup):
    choose **Continue with GitHub**. No GitHub account yet? GitHub's sign-in
