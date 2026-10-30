@@ -33,8 +33,15 @@ fingerprint() {
     | git hash-object --stdin
 }
 
+version="Update Cardlake to $(git rev-parse --short "$upstream")"
+
 mine="$(fingerprint HEAD)"
 if [ "$mine" = "$(fingerprint "$upstream")" ]; then
+  # Nothing to change, but the app reads which Cardlake it runs from the
+  # deployed commit's message (api/_lib/updates.js), so record it once.
+  if [ "$(git log -1 --format=%s)" != "$version" ]; then
+    git commit -q --allow-empty -m "$version"
+  fi
   say "Your Cardlake is already up to date."
   exit 0
 fi
@@ -58,7 +65,7 @@ rm -rf -- "$workflows"
 if [ -n "$(git ls-tree HEAD -- "$workflows")" ]; then
   git checkout HEAD -- "$workflows"
 fi
-git commit -q -m "Update Cardlake to $(git rev-parse --short "$upstream")"
+git commit -q -m "$version"
 say "Updated Cardlake to $(git rev-parse --short "$upstream"). Vercel deploys it in a minute or two."
 
 # Only workflow files this copy has: a Deploy button copy never has

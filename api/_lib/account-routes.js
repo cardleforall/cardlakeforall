@@ -11,6 +11,7 @@
 //   POST /api/auth/sign-out-everywhere   signs every device out, this one too
 //   GET  /api/auth/instance   the owner's generated sync token (Connect AI)
 //                             and this copy's GitHub repository (/updates)
+//   GET  /api/auth/update     { available }: whether a newer Cardlake is out
 'use strict';
 
 // Looked up at call time, like session-guard.js: tests and tools swap getSql.
@@ -20,6 +21,7 @@ const { clearSessionCookie, getSessionPayload, setSessionCookie } = require('./a
 const { enforceRateLimit } = require('./rate-limit');
 const { instanceSecret, secretSource } = require('./instance-secrets');
 const accounts = require('./local-accounts');
+const updates = require('./updates');
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 // Per source address and warm instance (rate-limit.js). Ten guesses per
@@ -135,4 +137,19 @@ function githubRepository() {
   return { full_name: `${owner}/${slug}`, branch: process.env.VERCEL_GIT_COMMIT_REF || 'main' };
 }
 
-module.exports = { PASSWORD_SIGN_IN_LIMIT: LIMITS.signIn, configHandler, instanceHandler, setupHandler, signInHandler, signOutEverywhereHandler };
+// Whether to show the owner "Update available" (vault.js; updates.js says how). Only a copy that
+// deploys from GitHub can update with the Update Cardlake workflow.
+async function updateHandler(req, res) {
+  if (!allowMethods(req, res, ['GET'])) return;
+  res.setHeader('Cache-Control', 'no-store');
+  if (!getSessionPayload(req)?.email) { res.status(401).json({ error: 'Sign in first.', code: 'AUTH_REQUIRED' }); return; }
+  req.cardleEvent = false;
+  if (!githubRepository()) { res.status(200).json({ available: false }); return; }
+  let startedAt = null;
+  try { startedAt = await accounts.instanceStartedAt(db.getSql()); } catch (_) { /* database unavailable: no date to go by */ }
+  const running = updates.runningCardlake(startedAt);
+  const available = running ? updates.isNewer(await updates.latestCardlake(), running) : false;
+  res.status(200).json({ available });
+}
+
+module.exports = { PASSWORD_SIGN_IN_LIMIT: LIMITS.signIn, configHandler, instanceHandler, setupHandler, signInHandler, signOutEverywhereHandler, updateHandler };

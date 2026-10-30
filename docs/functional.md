@@ -67,7 +67,7 @@ integrations or tokens. In this section and below, "member" means the owner.
 | The vault (feed) | `/` (`/vault/`) | The app: header with streak, account chip and "Deal me 5"; the feed; capture; search; detail view; integrations; Connect AI. Signed out, it sends you to sign in, or to setup. |
 | Setup | `/setup` | First-run setup: name, email, password. Open for an hour after the deployment first starts (section 7). |
 | Sign in | `/signin` | Email and password. |
-| Get updates | `/updates` | Turns on the Update Cardlake workflow in the owner's copy on GitHub, which the Deploy button can't copy, then links to it. Owner only. |
+| Get updates | `/updates` | Turns on the Update Cardlake workflow in the owner's copy on GitHub, which the Deploy button can't copy, then links to it. Owner only. The app shows the owner **Update available**, linking here, when a newer Cardlake is out (`/api/auth/update`). |
 | Welcome (onboarding) | `/welcome.html` | Pick a starter persona → connect Claude or ChatGPT → go to the feed. |
 | MCP setup guide | `/mcp-setup.html` | How to connect each AI client, with this deployment's own address. |
 | Privacy | `/privacy.html` | What this Cardlake stores, run by its owner (section 13). |

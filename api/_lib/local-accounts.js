@@ -73,6 +73,11 @@ async function setupStatus(sql, now = Date.now()) {
   return { needed, open: now < closesAt, reason: now < closesAt ? 'new' : 'expired', closes_at: new Date(closesAt).toISOString() };
 }
 
+// When this Cardlake first started (schema.js records it), as an ISO string.
+async function instanceStartedAt(sql) {
+  return (await readConfig(sql, INSTANCE_CREATED_KEY))?.at || null;
+}
+
 async function upsertOwnerAccount(sql, { email, name, passwordHash }) {
   await sql`
     insert into users (email, name, password_hash, password_changed_at, last_login_at)
@@ -134,6 +139,7 @@ module.exports = {
   MIN_PASSWORD_LENGTH,
   SETUP_WINDOW_MS,
   completeSetup,
+  instanceStartedAt,
   setupReopened,
   setupStatus,
   verifyPassword,

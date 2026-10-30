@@ -82,6 +82,19 @@ class UpdateCardlakeTests(unittest.TestCase):
         self.assertEqual(again.returncode, 0, again.stderr)
         self.assertIn('already up to date', again.stdout)
 
+    def test_an_up_to_date_copy_records_which_cardlake_it_runs_once(self):
+        # The app reads it from the deployed commit's message
+        # (api/_lib/updates.js) to know whether an update is out.
+        self.make_copy(V2)
+        version = f"Update Cardlake to {self.git(self.cardlake, 'rev-parse', '--short', 'HEAD')}"
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('already up to date', result.stdout)
+        self.assertEqual(self.git(self.copy, 'log', '-1', '--format=%s'), version)
+        self.assertEqual(self.files(), V2)
+        self.update()
+        self.assertEqual(self.git(self.copy, 'rev-list', '--count', 'HEAD'), '2')
+
     def test_a_changed_copy_is_refused_and_left_alone(self):
         self.make_copy({**V1, 'app.js': 'my own change\n'})
         before = self.git(self.copy, 'rev-parse', 'HEAD')
@@ -124,12 +137,16 @@ class UpdateCardlakeTests(unittest.TestCase):
         self.assertIn('https://github.com/${repo}/actions/workflows/update-cardlake.yml', page)
         rewrites = json.loads((ROOT / 'vercel.json').read_text(encoding='utf-8'))['rewrites']
         self.assertIn({'source': '/updates', 'destination': '/updates.html'}, rewrites)
-        # Setup ends on it when the copy deploys from GitHub, and owners find
-        # it later from the README and the support page.
-        setup = (ROOT / 'public' / 'setup.html').read_text(encoding='utf-8')
-        self.assertIn("fetch('/api/auth/instance'", setup)
-        self.assertIn("return '/updates?setup=1';", setup)
-        self.assertIn('id="to-cards" href="/vault/index.html"', (ROOT / 'public' / 'updates.html').read_text(encoding='utf-8'))
+        # Owners reach it from "Update available" in the app when a newer
+        # Cardlake is out, and from the README and the support page. Setup
+        # doesn't send them there: it goes straight to the cards.
+        vault = (ROOT / 'public' / 'vault' / 'assets' / 'vault.js').read_text(encoding='utf-8')
+        self.assertIn("api('/api/auth/update')", vault)
+        self.assertIn('<a class="cardle-update-btn" href="/updates"', vault)
+        self.assertIn('.cardle-update-btn', (ROOT / 'public' / 'vault' / 'index.html').read_text(encoding='utf-8'))
+        self.assertIn({'source': '/api/auth/update', 'destination': '/api/auth?action=update'}, rewrites)
+        self.assertIn("location.replace('/vault/index.html');", (ROOT / 'public' / 'setup.html').read_text(encoding='utf-8'))
+        self.assertNotIn('/updates', (ROOT / 'public' / 'setup.html').read_text(encoding='utf-8'))
         self.assertIn('`/updates`', (ROOT / 'README.md').read_text(encoding='utf-8'))
         self.assertIn('<a href="/updates">', (ROOT / 'public' / 'support.html').read_text(encoding='utf-8'))
 

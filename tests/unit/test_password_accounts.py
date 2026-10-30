@@ -277,6 +277,57 @@ process.env.VERCEL_GIT_PROVIDER = 'gitlab';
 assert.equal(await instance(), null, 'only GitHub has the Update Cardlake workflow');
 """)
 
+    def test_the_owner_hears_when_a_newer_cardlake_is_out(self):
+        # vault.js shows "Update available" (api/_lib/updates.js).
+        self.run_node(r"""
+for (const name of ['VERCEL_GIT_PROVIDER', 'VERCEL_GIT_REPO_OWNER', 'VERCEL_GIT_REPO_SLUG', 'VERCEL_GIT_COMMIT_REF', 'VERCEL_GIT_COMMIT_MESSAGE']) delete process.env[name];
+const newest = { sha: 'abc1234'.padEnd(40, '0'), date: '2026-10-30T10:00:00Z' };
+let reachable = true;
+const asked = [];
+global.fetch = async url => {
+  asked.push(url);
+  if (!reachable) throw new Error('offline');
+  return { ok: true, text: async () => `<feed><updated>x</updated><entry><id>tag:github.com,2008:Grit::Commit/${newest.sha}</id><updated>${newest.date}</updated></entry><entry></entry></feed>` };
+};
+const sql = await database();
+const cookie = await owner();
+const updates = require('./api/_lib/updates');
+const available = async () => { updates.forgetLatest(); const res = await call(auth, { query: { action: 'update' }, cookie }); assert.equal(res.code, 200); return res.body.available; };
+const startedAt = at => sql(`update app_config set value = jsonb_build_object('at', '${at}') where key = 'instance_created_at'`);
+
+assert.equal(await available(), false, 'not deployed from GitHub: nothing to update with');
+assert.deepEqual(asked, [], 'and GitHub is never asked');
+Object.assign(process.env, { VERCEL_GIT_PROVIDER: 'github', VERCEL_GIT_REPO_OWNER: 'olive', VERCEL_GIT_REPO_SLUG: 'my-cardlake' });
+assert.equal(asked.length, 0);
+await startedAt('2026-10-29T09:00:00Z');
+assert.equal(await available(), true, 'Cardlake changed after this copy first started');
+assert.equal(asked[0], `https://github.com/${updates.UPSTREAM}/commits/main.atom`);
+await startedAt('2026-10-30T11:00:00Z');
+assert.equal(await available(), false, 'this copy started with the newest Cardlake');
+
+process.env.VERCEL_GIT_COMMIT_MESSAGE = 'Update Cardlake to abc1234';
+assert.equal(await available(), false, 'updated to the newest');
+process.env.VERCEL_GIT_COMMIT_MESSAGE = 'Update Cardlake to 9999999\n';
+assert.equal(await available(), true, 'updated to an older one');
+
+reachable = false;
+assert.equal(await available(), false, "GitHub can't be reached: say nothing");
+assert.equal((await call(auth, { query: { action: 'update' } })).code, 401, 'never to a signed-out visitor');
+""")
+
+    def test_github_is_asked_at_most_every_few_hours(self):
+        self.run_node(r"""
+const updates = require('./api/_lib/updates');
+let asked = 0;
+global.fetch = async () => { asked += 1; return { ok: true, text: async () => `<entry><id>Grit::Commit/${'a'.repeat(40)}</id><updated>2026-10-30T10:00:00Z</updated></entry>` }; };
+const now = Date.parse('2026-10-30T12:00:00Z');
+assert.deepEqual(await updates.latestCardlake(now), { sha: 'a'.repeat(40), date: '2026-10-30T10:00:00Z' });
+await updates.latestCardlake(now + 60 * 60 * 1000);
+assert.equal(asked, 1);
+await updates.latestCardlake(now + 7 * 60 * 60 * 1000);
+assert.equal(asked, 2);
+""")
+
 
 @unittest.skipUnless(PGLITE.is_dir(), "run `npm ci` to install the PGlite dev dependency")
 class McpOAuthWithPasswordTests(Scenarios):

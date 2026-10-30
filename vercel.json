@@ -49,6 +49,7 @@
     { "source": "/api/auth/sign-in", "destination": "/api/auth?action=sign-in" },
     { "source": "/api/auth/sign-out-everywhere", "destination": "/api/auth?action=sign-out-everywhere" },
     { "source": "/api/auth/instance", "destination": "/api/auth?action=instance" },
+    { "source": "/api/auth/update", "destination": "/api/auth?action=update" },
     { "source": "/api/auth/tokens", "destination": "/api/auth?action=tokens" },
     { "source": "/api/auth/tokens/:id", "destination": "/api/auth?action=tokens&id=:id" },
     { "source": "/.well-known/oauth-protected-resource", "destination": "/api/mcp?metadata=1" },
