@@ -84,6 +84,16 @@
     else show('expired', 'reopen');
   }
 
+  // A copy deployed from GitHub can't update until the owner turns updates
+  // on, so that's the last step of setup. Anywhere else, straight to the cards.
+  async function afterSetup() {
+    try {
+      const res = await fetch('/api/auth/instance', { credentials: 'same-origin' });
+      if (res.ok && (await res.json()).repository) return '/updates?setup=1';
+    } catch { /* the cards are fine to go to */ }
+    return '/vault/index.html';
+  }
+
   $('setup-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = new FormData(event.target);
@@ -101,7 +111,7 @@
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Setup failed');
-      location.replace('/vault/index.html');
+      location.replace(await afterSetup());
     } catch (err) {
       error.textContent = err.message;
       button.disabled = false;

@@ -75,7 +75,7 @@ class UpdateCardlakeTests(unittest.TestCase):
         result = self.update()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.files(), {'app.js': 'two\n', 'new.txt': 'new\n', '.github/workflows/ci.yml': 'ci: one\n'})
-        self.assertIn("workflows", result.stdout)
+        self.assertIn('copy those files', result.stdout)
         self.assertEqual(self.git(self.copy, 'status', '--porcelain'), '')
 
         again = self.update()
@@ -110,7 +110,8 @@ class UpdateCardlakeTests(unittest.TestCase):
         result = self.update()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.files(), {'app.js': 'two\n', 'new.txt': 'new\n', '.env.example': 'A=\n'})
-        self.assertIn('copy those files', result.stdout)
+        # Cardlake's ci.yml isn't in this copy, so there's nothing to warn about.
+        self.assertNotIn('workflow', result.stdout)
 
     def test_updates_page_serves_the_same_workflow_it_asks_the_owner_to_commit(self):
         served = ROOT / 'public' / 'update-cardlake.yml'
@@ -123,7 +124,12 @@ class UpdateCardlakeTests(unittest.TestCase):
         self.assertIn('https://github.com/${repo}/actions/workflows/update-cardlake.yml', page)
         rewrites = json.loads((ROOT / 'vercel.json').read_text(encoding='utf-8'))['rewrites']
         self.assertIn({'source': '/updates', 'destination': '/updates.html'}, rewrites)
-        # Owners find it from the README and the support page.
+        # Setup ends on it when the copy deploys from GitHub, and owners find
+        # it later from the README and the support page.
+        setup = (ROOT / 'public' / 'setup.html').read_text(encoding='utf-8')
+        self.assertIn("fetch('/api/auth/instance'", setup)
+        self.assertIn("return '/updates?setup=1';", setup)
+        self.assertIn('id="to-cards" href="/vault/index.html"', (ROOT / 'public' / 'updates.html').read_text(encoding='utf-8'))
         self.assertIn('`/updates`', (ROOT / 'README.md').read_text(encoding='utf-8'))
         self.assertIn('<a href="/updates">', (ROOT / 'public' / 'support.html').read_text(encoding='utf-8'))
 

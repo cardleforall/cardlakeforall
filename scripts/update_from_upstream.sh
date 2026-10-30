@@ -61,6 +61,8 @@ fi
 git commit -q -m "Update Cardlake to $(git rev-parse --short "$upstream")"
 say "Updated Cardlake to $(git rev-parse --short "$upstream"). Vercel deploys it in a minute or two."
 
-if ! git diff --quiet HEAD "$upstream" -- "$workflows"; then
-  say "Cardlake's own GitHub workflows (in $workflows) changed too, and this update can't change those. Your Cardlake works without them; to get them, copy those files from Cardlake's repository into yours."
+# Only workflow files this copy has: a Deploy button copy never has
+# Cardlake's others and works without them, so they aren't worth a warning.
+if ! git diff --quiet --diff-filter=a HEAD "$upstream" -- "$workflows"; then
+  say "Cardlake changed GitHub workflow files your copy has (in $workflows), and this update can't change those. To get the changes, copy those files from Cardlake's repository into yours."
 fi
