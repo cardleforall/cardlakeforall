@@ -1,6 +1,6 @@
 # Deployment notes
 
-The README's "Run your own" section walks through a first deploy: the
+The README's "Get started" section walks through a first deploy: the
 "Deploy with Vercel" button adds a Neon database and a Blob store, the app
 generates its own secrets, and the owner sets a password at `/setup`. No
 environment variable has to be typed. Everything you can set is optional

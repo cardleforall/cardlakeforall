@@ -6,6 +6,16 @@ and GitHub if you don't have one), click one button, and set a password.
 Vercel and GitHub change their screens now and then, so yours may look a
 little different. The buttons named here stay the same.
 
+**The steps:**
+
+1. [Sign up at Vercel, with GitHub](#1-sign-up-at-vercel-with-github)
+2. [Click Deploy](#2-click-deploy)
+3. [Add the database and file storage](#3-add-the-database-and-file-storage)
+4. [Deploy](#4-deploy)
+5. [Set your password, right away](#5-set-your-password-right-away)
+
+[Back to the README](../README.md)
+
 ## 1. Sign up at Vercel, with GitHub
 
 Vercel runs your Cardlake. GitHub keeps your copy of its code, which is how
