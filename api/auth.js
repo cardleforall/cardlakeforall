@@ -14,7 +14,7 @@ const { allowMethods, readJson, sendError } = require('./_lib/http');
 const { clearSessionCookie, getSessionPayload, isAuthenticatedRequest, resolveWriterTenant } = require('./_lib/auth');
 const { createApiToken, listApiTokens, revokeApiToken } = require('./_lib/api-tokens');
 const { authorizationMetadata } = require('./_lib/oauth');
-const { configHandler, instanceHandler, setupHandler, signInHandler, signOutEverywhereHandler } = require('./_lib/account-routes');
+const { configHandler, instanceHandler, setupHandler, signInHandler, signOutEverywhereHandler, updateHandler } = require('./_lib/account-routes');
 
 async function logout(req, res) {
   if (!allowMethods(req, res, ['POST'])) return;
@@ -77,6 +77,7 @@ module.exports = withSessionGuard(async function handler(req, res) {
   if (action === 'sign-in') return signInHandler(req, res);
   if (action === 'sign-out-everywhere') return signOutEverywhereHandler(req, res);
   if (action === 'instance') return instanceHandler(req, res);
+  if (action === 'update') return updateHandler(req, res);
   if (action === 'oauth-metadata') return oauthMetadata(req, res);
   if (action === 'tokens') return tokens(req, res);
   return res.status(404).json({ error: 'Not found' });

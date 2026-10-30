@@ -63,6 +63,14 @@
       window.location.href = '/signin';
     });
   }
+  // When a newer Cardlake is out, the owner sees "Update available", which
+  // leads to /updates (api/_lib/updates.js decides).
+  async function showUpdateAvailable(container) {
+    try {
+      if (!(await api('/api/auth/update')).available) return;
+      container.querySelector('.cardle-account-chip').insertAdjacentHTML('afterbegin', '<a class="cardle-update-btn" href="/updates" title="A newer version of Cardlake is out">Update available</a>');
+    } catch (_) { /* no notice */ }
+  }
   // Personal access tokens let a client that can't hold a browser session
   // cookie (the MCP server, a script) authenticate as this same user. Each
   // token's plaintext is shown exactly once, right after creation.
@@ -283,6 +291,7 @@
       const session = await api('/api/auth/session');
       if (session.authenticated && session.isDefault === false) {
         renderAccountChip(container, session);
+        showUpdateAvailable(container);
         bindSignOutEverywhere();
         await followOnboarding();
         return;

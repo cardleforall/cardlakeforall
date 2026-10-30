@@ -855,7 +855,8 @@ ChatGPT, Codex).
 `setup.html`, `signin.html` and `updates.html` + `updates.js` (styled by
 `account.css`; the last opens GitHub's new-file page with
 `public/update-cardlake.yml`, a copy of the Update Cardlake workflow, filled
-in), `welcome.html` +
+in; the vault's **Update available** leads there, from `api/_lib/updates.js`,
+which reads Cardlake's GitHub commit feed on the server), `welcome.html` +
 `welcome.js` (onboarding with progress and polling), `mcp-setup.html`
 (filled with this deployment's address by `connect-ai.js`), and the
 owner-run `privacy.html` and `support.html`. `robots.txt` disallows

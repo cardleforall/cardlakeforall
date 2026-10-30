@@ -37,11 +37,6 @@
     }
     $('loading').hidden = true;
     $('ready').hidden = false;
-    // Straight after setup (setup.html), this is its last step.
-    if (new URLSearchParams(location.search).has('setup')) {
-      document.querySelector('#ready h1').textContent = 'Last step: turn on updates';
-      $('to-cards').textContent = 'Skip for now and go to my cards';
-    }
     // Vercel says which repository this copy deploys from; anywhere else the
     // owner types it.
     const repository = instance.repository;

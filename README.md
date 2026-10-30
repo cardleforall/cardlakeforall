@@ -86,14 +86,15 @@ and redeploy (**Deployments**, **⋯**, **Redeploy**). Open `/setup` on your
 site and set a new password with the same email: you keep all your cards.
 Then delete `CARDLE_SETUP_OPEN` and redeploy again.
 
-**Getting updates.** Your copy doesn't update by itself. The first time,
-open your Cardlake's address followed by `/updates` and click **Turn on
-updates**: GitHub opens with the update file filled in, ready to commit. After
+**Getting updates.** Your copy doesn't update by itself. When a new version
+is out, Cardlake shows **Update available** at the top; it leads to your
+Cardlake's `/updates` page. The first time, click **Turn on
+updates** there: GitHub opens with the update file filled in, ready to commit. After
 that, to get the latest Cardlake, open your copy on GitHub, then **Actions**,
 **Update Cardlake** and **Run workflow**. Vercel deploys the new version a
 minute or two later, and you keep all your cards. If you've changed the code
-yourself, it stops rather than erase your changes. To hear about new versions,
-open [Cardlake on GitHub](https://github.com/cardleforall/cardlakeforall) and
+yourself, it stops rather than erase your changes. To also hear about new
+versions by email, open [Cardlake on GitHub](https://github.com/cardleforall/cardlakeforall) and
 choose **Watch**, **Custom**, **Releases**.
 
 **Everything else is optional.** Cardlake makes its own secret keys and sets
