@@ -1,0 +1,5 @@
+# This Cardlake belongs to one person: nothing here is for search or answer
+# engines. This is crawl guidance, not access control; every card requires
+# signing in.
+User-agent: *
+Disallow: /

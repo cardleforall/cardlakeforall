@@ -1,0 +1,122 @@
+/* Aurora foundations. This is deliberately shell-only: tab applications keep their own layouts. */
+@import url('/fonts/fonts.css');
+
+:root {
+  --bg: oklch(97% .01 280);
+  --surface: oklch(99% .004 275);
+  --surface-2: oklch(95% .012 275);
+  --track: oklch(88% .015 275);
+  --ink: oklch(20% .02 275);
+  --ink-soft: oklch(42% .02 275);
+  --ink-faint: oklch(58% .02 275);
+  --glass: oklch(99% .006 275 / .9);
+  --glass-strong: oklch(96% .015 280 / .95);
+  --border: oklch(45% .04 280 / .16);
+  --border-strong: oklch(40% .06 280 / .28);
+  --accent-1: oklch(58% .14 258);
+  --accent-2: oklch(52% .16 262);
+  --accent-3: oklch(64% .12 250);
+  --grad-brand: linear-gradient(135deg, var(--accent-1), var(--accent-2), var(--accent-3));
+  /* Shared feed action gradients: same family as New card, but lighter. */
+  --aurora-calm-action: linear-gradient(135deg, oklch(64% .12 258), oklch(60% .13 262), oklch(70% .1 250));
+  --aurora-calm-action-hover: linear-gradient(135deg, oklch(60% .13 258), oklch(56% .14 262), oklch(66% .11 250));
+  --aurora-calm-action-border: oklch(52% .16 262);
+  --aurora-calm-action-shadow: oklch(45% .14 258 / .32);
+  --aurora-action-primary: var(--aurora-calm-action);
+  --aurora-action-primary-hover: var(--aurora-calm-action-hover);
+  --shadow-glow: 0 30px 70px -15px oklch(55% .14 258 / .28);
+  --heart-active: oklch(70% .2 20);
+  --heart-idle: oklch(55% .02 275);
+  --flame: oklch(70% .19 45);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius-logo: 6px;
+  --radius-control: 12px;
+  --radius-chip: 20px;
+  --radius-media: 12px;
+  --radius-card: 16px;
+  --radius-sheet: 24px;
+
+  /* Compatibility aliases retained for the current tab applications. */
+  --s: var(--surface);
+  --t: var(--ink);
+  --m: var(--ink-faint);
+  --b: var(--border);
+  --ac: var(--accent-2);
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+button,
+input,
+select,
+textarea { font: inherit; }
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.cardle-wordmark { font-family: var(--font-display); }
+
+.app-hdr {
+  height: 56px;
+  background: oklch(99% .004 275 / .9);
+  border-bottom-color: var(--border);
+}
+
+.nav {
+  background: oklch(99% .004 275 / .9);
+  border-bottom-color: var(--border);
+}
+
+.nav a { color: var(--ink-faint); }
+.nav a:hover { color: var(--ink); background: var(--surface-2); }
+.nav a.active { color: var(--accent-2); border-bottom-color: var(--accent-2); }
+
+.cardle-mark {
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border-radius: var(--radius-logo);
+  background: var(--grad-brand);
+  filter: none;
+}
+
+.cardle-wordmark {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+
+/* Reusable Aurora primitives for the upcoming feed without changing current app roots. */
+.aurora-surface { background: var(--glass); border: 1px solid var(--border); }
+.aurora-card { border-radius: var(--radius-card); }
+.aurora-control { border-radius: var(--radius-control); }
+.aurora-chip { border-radius: var(--radius-chip); }
+.aurora-media { border-radius: var(--radius-media); overflow: hidden; background: var(--surface-2); }
+.aurora-brand { color: #fff; background: var(--grad-brand); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+.cardle-sync-token { margin-top: 14px; font-size: 13px; }
+.cardle-sync-token summary { cursor: pointer; font-weight: 600; }
+.cardle-sync-token code { display: block; margin: 8px 0; word-break: break-all; }
+.cardle-signout-all { margin-top: 18px; font-size: 13px; }
+.cardle-signout-all button { font: inherit; font-weight: 600; padding: 7px 12px; border-radius: 9px; border: 1px solid currentColor; background: none; color: inherit; cursor: pointer; }
+.cardle-signout-all p { margin-top: 6px; opacity: .75; }

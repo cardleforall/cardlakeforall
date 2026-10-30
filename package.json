@@ -1,0 +1,35 @@
+{
+  "name": "cardlake",
+  "version": "1.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "commonjs",
+  "scripts": {
+    "build": "python3 scripts/build_vault_public.py",
+    "build:vault": "python3 scripts/build_vault_public.py --target public/vault/index.html",
+    "validate:vault": "python3 scripts/validate_vault_build.py",
+    "test": "npm run build:vault && npm run validate:vault",
+    "test:lite": "python3 -m unittest discover -t . -s tests/unit -p test_*.py -v",
+    "test:full": "python3 -m unittest discover -t . -s tests/unit -p test_*.py -v && python3 -m unittest discover -t . -s tests/sit -p test_*.py -v",
+    "dev": "node --env-file=.env.local scripts/dev_server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@neondatabase/serverless": "^0.10.4",
+    "@vercel/blob": "^2.8.0",
+    "@vercel/functions": "^3.9.11",
+    "bcryptjs": "^2.4.3",
+    "busboy": "^1.6.0",
+    "fast-xml-parser": "^5.11.2",
+    "file-type": "^22.1.1",
+    "yauzl": "^3.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "pg": "^8.13.1"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

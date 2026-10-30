@@ -1,0 +1,263 @@
+/* Aurora overview feed: isolated from resource-tab application layouts. */
+.aurora-feed{display:grid;grid-template-columns:minmax(0,1fr);min-height:calc(100vh - 112px);margin:-16px;max-width:none;background:var(--bg);color:var(--ink)}
+.aurora-sandbox-banner{grid-column:1/-1;padding:10px 22px;background:var(--grad-brand);color:#fff;font:600 12.5px var(--font-body);text-align:center}.aurora-sandbox-banner a{color:#fff;font-weight:700;text-decoration:underline}
+.aurora-sidebar{padding:20px 14px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:4px}.aurora-sidebar small,.aurora-card-heading span,.aurora-modal small{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint)}
+.aurora-queues{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+.aurora-queue-row{border:0;background:transparent;padding:8px 10px;border-radius:10px;display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.aurora-queue-row:hover{background:var(--glass-strong);color:var(--ink)}
+.aurora-queue-row i{flex:0 0 auto}
+.aurora-queue-row b{margin-left:auto;font-size:11px;color:var(--ink-faint)}
+.aurora-capture-idea{margin-top:auto;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);padding:10px;border-radius:12px;font:700 13px var(--font-body);cursor:pointer}
+.aurora-side-row{border:0;background:transparent;color:var(--ink-soft);border-radius:10px;padding:8px 10px;text-align:left;display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}.aurora-side-row:hover,.aurora-side-row.active{background:var(--glass-strong);color:var(--ink)}.aurora-side-row i{height:8px;width:8px;border-radius:2px}.aurora-side-row b{margin-left:auto;font-size:11px;color:var(--ink-faint)}.aurora-streak-card{margin-top:auto;padding:14px 10px;border:1px solid var(--border);border-radius:14px;background:var(--glass);color:var(--flame)}.aurora-streak-card b{font:700 18px var(--font-display);margin-left:4px;color:var(--ink)}.aurora-streak-card span{font-size:11px;color:var(--ink-faint);margin-left:3px}
+.aurora-main{max-width:760px;width:100%;margin:0 auto;padding:24px 22px}.aurora-feed-header{display:flex;justify-content:space-between;align-items:center;gap:15px}.aurora-feed-header small{font-size:11.5px;color:var(--ink-faint)}.aurora-feed h2{font:700 20px var(--font-display);letter-spacing:-.02em}.aurora-new,.aurora-action{border:0;border-radius:13px;background:var(--grad-brand);color:#fff;font:700 14px var(--font-display);padding:10px 16px;cursor:pointer;box-shadow:0 10px 24px -8px oklch(45% .14 258 / .35)}.aurora-search{border:1px solid var(--border);background:var(--surface-2);border-radius:10px;padding:9px 11px;cursor:pointer}.aurora-chips{display:flex;gap:6px;overflow:auto;padding:18px 0 12px}.aurora-chip{white-space:nowrap;padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--glass);color:var(--ink-soft);font-size:11.5px;font-weight:600;cursor:pointer}.aurora-chip.active{background:var(--grad-brand);color:#fff;border-color:transparent}.aurora-progress{height:6px;border-radius:3px;background:var(--track);overflow:hidden}.aurora-progress i{height:100%;display:block;background:var(--grad-brand);border-radius:inherit;transition:width .28s ease}.aurora-progress-label{margin:5px 0 15px;color:var(--ink-faint);font-size:11px;font-weight:600}
+.aurora-list{display:grid;gap:10px}.aurora-feed-card{padding:14px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--glass);cursor:pointer;animation:auroraCardIn .4s ease both;transition:border-color .2s,background .2s,opacity .28s,transform .28s}.aurora-feed-card:hover{border-color:var(--border-strong);background:var(--glass-strong)}.aurora-feed-card.is-leaving{opacity:0;transform:translateX(50px) scale(.96)}.aurora-card-top{display:flex;align-items:flex-start;gap:10px}.aurora-type-badge{flex:0 0 34px;height:34px;display:grid;place-items:center;border-radius:10px;color:#fff;font:700 11px var(--font-display)}.aurora-card-heading{min-width:0;flex:1}.aurora-card-heading span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aurora-card-heading h3{font:700 15px/1.25 var(--font-display)}.aurora-heart{border:0;background:none;color:var(--heart-idle);font-size:22px;line-height:1;cursor:pointer}.aurora-heart.is-liked{color:var(--heart-active)}.aurora-feed-card>p,.aurora-modal>p{font-size:12.5px;line-height:1.5;color:var(--ink-soft);margin-top:9px;white-space:pre-wrap}.aurora-card-media{aspect-ratio:16/9;margin-top:10px;border-radius:12px;overflow:hidden;background:var(--surface-2)}.aurora-card-media img{display:block;width:100%;height:100%;object-fit:cover}.aurora-card-actions{display:flex;justify-content:center;gap:8px;margin-top:10px}.aurora-card-actions .aurora-single-action{margin-left:auto}.aurora-action{padding:7px 13px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink);font:600 12px var(--font-body);box-shadow:none}.aurora-quiet{border:0;background:transparent;color:var(--ink-faint);font-size:12px;cursor:pointer}.aurora-card-actions .aurora-action,.aurora-card-actions .aurora-quiet{flex:1}.aurora-empty{text-align:center;padding:48px 10px}.aurora-empty>div:first-child{display:grid;place-items:center;margin:auto;width:64px;height:64px;border-radius:18px;background:var(--grad-brand);color:#fff;font-size:30px}.aurora-empty h3{margin-top:14px;font:700 19px var(--font-display)}.aurora-empty p{font-size:13px;color:var(--ink-soft);margin-top:5px}.aurora-sentinel{min-height:1px}
+.aurora-overlay{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:oklch(10% .02 275/.7);backdrop-filter:blur(5px);animation:auroraFade .2s}.aurora-modal{position:relative;width:min(520px,100%);max-height:82vh;overflow:auto;padding:26px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow-glow);animation:auroraModal .25s cubic-bezier(.2,.9,.25,1)}.aurora-close{position:absolute;right:14px;top:12px;border:0;background:transparent;font-size:26px;cursor:pointer;color:var(--ink-soft)}.aurora-modal h2{margin:10px 30px 8px 0;font-size:22px}.aurora-type-badge.big{height:44px;width:44px;font-size:13px}.aurora-type-badge svg{display:block}.aurora-type-badge.big svg{width:20px;height:20px}.aurora-modal-actions{display:flex;gap:9px;margin-top:18px}.aurora-modal-actions .aurora-new{flex:1}.aurora-modal-actions .aurora-heart{width:50px;background:var(--surface-2);border:1px solid var(--border);border-radius:13px}.aurora-type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:7px 0 14px}.aurora-capture-type{min-height:57px;border:1px solid var(--border);border-radius:12px;background:var(--glass);cursor:pointer;font:700 11px var(--font-display);color:var(--ink)}.aurora-capture-type svg{display:block;margin:0 auto}.aurora-capture-type span{display:block;font:600 10px var(--font-body);margin-top:3px}.aurora-capture-type.selected{border-color:var(--accent-2);background:oklch(93% .05 258)}.aurora-capture-label{display:block;color:var(--ink-faint);font-size:11px;font-weight:700}.aurora-capture-label input{display:block;width:100%;margin:6px 0 13px;padding:12px 14px;border:0;border-radius:12px;background:var(--surface-2);color:var(--ink)}.aurora-toast{position:fixed;z-index:400;top:18px;left:50%;transform:translateX(-50%);padding:9px 16px;border:1px solid var(--border-strong);border-radius:20px;background:oklch(99% .005 275/.97);box-shadow:0 8px 20px -6px #0008;font-size:12px;font-weight:600;animation:auroraToast .25s}.aurora-error{padding:30px;color:var(--ink-soft)}.aurora-undo-toast{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 16px}.aurora-edit{position:absolute;right:48px;top:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink-soft);font:600 12px var(--font-body);padding:6px 12px;min-height:32px;cursor:pointer}.aurora-undo-toast button{border:0;border-radius:14px;padding:6px 12px;background:var(--accent-2);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+@keyframes auroraCardIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes auroraFade{from{opacity:0}to{opacity:1}}@keyframes auroraModal{from{opacity:0;transform:scale(.95) translateY(6px)}to{opacity:1;transform:none}}@keyframes auroraToast{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translateX(-50%)}}
+@media(max-width:800px){.aurora-feed{display:block;margin:-16px}.aurora-sidebar{display:none}.aurora-main{padding:20px 16px}.aurora-feed-header h2{font-size:19px}.aurora-new{padding:10px 12px}.aurora-overlay{align-items:end;padding:0}.aurora-modal{width:100%;max-height:82vh;border-radius:24px 24px 0 0;padding:20px 18px 26px;animation:auroraSheet .32s cubic-bezier(.2,.9,.25,1)}}@media(max-width:768px){.aurora-feed{margin:-12px}}@keyframes auroraSheet{from{transform:translateY(30px)}to{transform:none}}@media(prefers-reduced-motion:reduce){.aurora-feed-card,.aurora-overlay,.aurora-modal,.aurora-toast{animation:none;transition:none}}
+@media(max-width:640px){.aurora-feed{margin:-12px;overflow-x:clip}.aurora-main{padding:18px 12px 28px}.aurora-feed-header{align-items:flex-start;gap:10px}.aurora-feed-header small{font-size:10.5px}.aurora-feed-header h2{font-size:20px;line-height:1.1}.aurora-header-actions{display:flex;flex:0 0 auto;gap:7px}.aurora-search,.aurora-new{min-width:44px;min-height:44px;margin:0;padding:10px 12px}.aurora-new{display:inline-flex;align-items:center;justify-content:center;gap:5px}.aurora-new span{display:inline}.aurora-chips{margin:0 -12px;padding:16px 12px 13px;gap:8px;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.aurora-chips::-webkit-scrollbar{display:none}.aurora-chip{flex:0 0 auto;min-height:36px;padding:8px 14px}.aurora-progress-label{margin-bottom:16px}.aurora-list{gap:12px}.aurora-feed-card{padding:15px;border-radius:18px;background:linear-gradient(145deg,var(--glass-strong),var(--glass));box-shadow:0 8px 22px -18px oklch(28% .08 285/.6)}.aurora-card-top{gap:9px}.aurora-type-badge{flex-basis:36px;width:36px;height:36px;border-radius:12px}.aurora-card-heading span{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.aurora-card-heading h3{font-size:16px;line-height:1.32;overflow-wrap:anywhere;word-break:break-word}.aurora-heart{flex:0 0 44px;min-width:44px;min-height:44px;margin:-5px -8px 0 0;border-radius:12px}.aurora-feed-card>p{font-size:13px;line-height:1.55;overflow-wrap:anywhere;word-break:break-word}.aurora-card-media{margin-top:12px;border-radius:14px}.aurora-card-actions{display:flex;justify-content:center;gap:8px;margin-top:10px}.aurora-card-actions .aurora-quiet,.aurora-card-actions .aurora-action{display:flex;align-items:center;justify-content:center;min-width:0;min-height:36px;padding:6px 8px;border-radius:12px;overflow-wrap:anywhere;text-align:center;flex:1}.aurora-card-actions .aurora-quiet{border:1px solid var(--border);background:var(--surface-2);color:var(--ink-soft);font-weight:600}.aurora-card-actions .aurora-action{border-color:transparent;background:var(--grad-brand);color:#fff;font-weight:700;box-shadow:0 8px 18px -12px oklch(55% .2 290/.8)}.aurora-card-actions .aurora-single-action{grid-column:1/-1}.aurora-empty{padding:42px 14px}.aurora-modal h2,.aurora-modal>p{overflow-wrap:anywhere;word-break:break-word}}@media(max-width:360px){.aurora-feed-header{flex-wrap:wrap}.aurora-header-actions{width:100%;justify-content:flex-end}}
+.aurora-feed button:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}.aurora-media-preview{position:relative;display:block;isolation:isolate;border:1px solid var(--border-strong);box-shadow:0 8px 20px -15px oklch(28% .08 285/.8);color:#fff;text-decoration:none;-webkit-tap-highlight-color:transparent;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}.aurora-media-preview::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 34%,oklch(18% .04 275/.78));pointer-events:none}.aurora-media-preview img{transition:transform .3s ease}.aurora-media-cover{display:grid;place-items:center;background:linear-gradient(135deg,#2a2160,#5146c8);background:radial-gradient(circle at 76% 18%,oklch(72% .16 265/.72),transparent 28%),linear-gradient(135deg,oklch(30% .1 285),oklch(53% .19 275))}.aurora-media-art{color:oklch(100% 0 0/.18);font-size:clamp(68px,17vw,112px);line-height:.8;transform:translateX(5%)}.aurora-media-play{position:absolute;z-index:2;top:50%;left:50%;display:grid;width:48px;height:48px;place-items:center;border:1px solid oklch(100% 0 0/.62);border-radius:50%;background:oklch(18% .04 275/.65);box-shadow:0 5px 15px oklch(18% .04 275/.35);font-size:17px;line-height:1;transform:translate(-50%,-50%);backdrop-filter:blur(6px)}.aurora-media-meta{position:absolute;z-index:2;right:12px;bottom:10px;left:12px;display:grid;gap:2px;min-width:0;text-shadow:0 1px 3px oklch(18% .04 275/.8)}.aurora-media-meta b{font-size:10px;letter-spacing:.07em;text-transform:uppercase}.aurora-media-meta span{overflow:hidden;font-size:12px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.aurora-media-preview:hover{border-color:var(--accent-2);box-shadow:0 12px 25px -15px oklch(40% .16 285/.85);transform:translateY(-1px)}.aurora-media-preview:hover img{transform:scale(1.025)}.aurora-media-preview:active{transform:scale(.99)}.aurora-media-preview:focus-visible{outline:3px solid var(--accent-2);outline-offset:3px}@media(max-width:640px){.aurora-card-media{aspect-ratio:16/8.5;max-height:210px}.aurora-media-meta{right:11px;bottom:9px;left:11px}.aurora-media-play{width:44px;height:44px}}@media(prefers-reduced-motion:reduce){.aurora-media-preview,.aurora-media-preview img{transition:none}}
+.aurora-media-indicator{display:inline-flex;align-items:center;gap:7px;width:max-content;min-height:32px;margin:2px 0 10px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:999px;background:oklch(96% .03 285);color:oklch(36% .11 285);font:800 12px var(--font-body);text-decoration:none}.aurora-media-indicator span{display:grid;place-items:center;width:18px;height:18px;border-radius:999px;background:var(--aurora-action-primary);color:#fff;font-size:10px}.aurora-media-indicator:hover{background:oklch(93% .045 285);border-color:oklch(68% .10 285)}
+
+/* Delete is a quiet, low-emphasis action; remind later is the one clear next step. */
+.aurora-card-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.aurora-card-actions .aurora-action,
+.aurora-card-actions .aurora-quiet{flex:none}
+.aurora-card-actions .aurora-quiet{
+  min-height:40px;
+  padding:8px 6px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:var(--ink-faint);
+  font:600 13px var(--font-body);
+  box-shadow:none;
+  transition:background .15s ease,color .15s ease;
+}
+.aurora-card-actions .aurora-quiet:hover,
+.aurora-card-actions .aurora-quiet:active{background:var(--surface-2);color:var(--ink-soft)}
+.aurora-card-actions .aurora-action{
+  min-height:40px;
+  padding:9px 18px;
+  border:0;
+  border-radius:999px;
+  background:var(--grad-brand);
+  color:#fff;
+  font:700 13px var(--font-display);
+  box-shadow:0 8px 18px -10px var(--aurora-calm-action-shadow);
+  transition:box-shadow .15s ease;
+}
+.aurora-card-actions .aurora-action:hover,
+.aurora-card-actions .aurora-action:active{box-shadow:0 10px 22px -8px var(--aurora-calm-action-shadow)}
+.aurora-card-actions .aurora-attach {
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.aurora-card-actions .aurora-attach:hover,
+.aurora-card-actions .aurora-attach:active {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+@media(max-width:640px){.aurora-card-actions .aurora-action,.aurora-card-actions .aurora-quiet{min-height:44px;flex:none}}
+
+/* Mirrors the Learnings view controls without importing its application layout. */
+.aurora-feed-views{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 13px}.aurora-view-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font:700 12px var(--font-body);cursor:pointer;transition:background .2s,border-color .2s,color .2s,transform .2s}.aurora-view-toggle b{display:grid;min-width:20px;min-height:20px;place-items:center;padding:0 5px;border-radius:999px;background:var(--glass-strong);color:inherit;font-size:11px}.aurora-view-toggle.is-active{border-color:transparent;background:var(--grad-brand);color:#fff;box-shadow:0 5px 14px -8px oklch(45% .14 258/.4)}.aurora-media-toggle.is-active{border-color:var(--accent-2);background:var(--surface-2);color:var(--accent-2);box-shadow:none}.aurora-view-toggle:active{transform:scale(.98)}.aurora-view-hint{font-size:11px;color:var(--ink-faint)}.aurora-favorites-empty .aurora-view-toggle{margin-top:14px}.aurora-favorites-empty>div{background:var(--surface-2);color:var(--heart-active)}
+@media(max-width:640px){.aurora-feed-views{flex-wrap:wrap;overflow:visible;margin:0 0 13px;padding:0}.aurora-view-toggle{flex:0 0 auto;min-height:44px}.aurora-view-hint{display:none}}
+@media(prefers-reduced-motion:reduce){.aurora-view-toggle{transition:none}.aurora-view-toggle:active{transform:none}}
+.aurora-sort{display:inline-flex;align-items:center;gap:4px;margin:0;padding:3px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-2)}.aurora-sort-label{padding:0 6px 0 9px;font:700 11px var(--font-body);color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em}.aurora-sort-option{min-height:38px;padding:6px 12px;border:0;border-radius:999px;background:transparent;color:var(--ink-soft);font:700 12px var(--font-body);cursor:pointer;transition:background .2s,color .2s}.aurora-sort-option.is-active{background:var(--grad-brand);color:#fff}.aurora-sort-option:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.aurora-sort-option{transition:none}}
+/* On a phone the four view controls wrapped onto two rows. They share one
+   slimmer row instead (36px tall; at 44px it read as heavy): Favorites and
+   Snoozed show just their icon and count (the word stays for screen
+   readers), Previews drops its icon, and Sort drops its visible label (the
+   group is still named "Sort cards"). A phone too narrow even for that
+   scrolls the row sideways rather than wrapping it. The chips row's
+   scrollbar is drawn at its bottom edge, so part of its bottom padding
+   becomes margin to keep that scrollbar clear of this row. */
+@media(max-width:640px){.aurora-feed-views{flex-wrap:nowrap;gap:4px;margin:0 -12px 13px;padding:0 12px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.aurora-feed-views::-webkit-scrollbar{display:none}.aurora-view-toggle{gap:4px;min-height:36px;padding:5px 8px;font-size:11.5px}.aurora-view-toggle b{min-width:18px;min-height:18px;padding:0 4px;font-size:10.5px}.aurora-view-toggle:not(.aurora-media-toggle) span:not([aria-hidden]){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.aurora-media-toggle>span[aria-hidden]{display:none}.aurora-sort{flex:0 0 auto}.aurora-sort-label{display:none}.aurora-sort{padding:2px}.aurora-sort-option{min-height:30px;padding:4px 9px;font-size:11.5px}.aurora-chips{margin-bottom:10px;padding-bottom:6px}}
+
+/* Delete is persistent feed state; keep it an inline, tap-sized card action. */
+.aurora-card-actions .aurora-dismiss{white-space:nowrap}
+@media(max-width:640px){.aurora-card-actions .aurora-dismiss{grid-column:auto}.aurora-card-actions .aurora-action{grid-column:auto}}
+
+/* Swipe behavior matching Learnings tab */
+.aurora-feed-card {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aurora-feed-card:focus {
+  outline: none;
+}
+
+.aurora-feed-card:focus-visible {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 2px;
+}
+.aurora-card-inner {
+  position: relative;
+  z-index: 1;
+  background: var(--glass);
+  transform: translateX(var(--aurora-swipe-x, 0));
+  transition: transform .18s ease;
+}
+.aurora-feed-card.swiping .aurora-card-inner {
+  transition: none;
+}
+.aurora-feed-card.remind-preview .aurora-card-inner {
+  box-shadow: -6px 0 18px oklch(56% .14 238 / .2);
+}
+.aurora-feed-card.dismiss-preview .aurora-card-inner {
+  box-shadow: 6px 0 18px oklch(56% .14 238 / .2);
+}
+.aurora-swipe-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .12s ease, visibility .12s ease;
+}
+.aurora-feed-card.swiping .aurora-swipe-bg {
+  opacity: 1;
+  visibility: visible;
+}
+.aurora-swipe-right {
+  justify-content: flex-start;
+  background: var(--aurora-calm-action);
+}
+.aurora-swipe-left {
+  justify-content: flex-end;
+  background: var(--aurora-calm-action);
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora-card-inner,
+  .aurora-swipe-bg {
+    transition: none;
+  }
+}
+
+.aurora-attach-subtle { opacity: 0.6; color: var(--ink-faint); }
+.aurora-recall-meta{font-size:12px;font-weight:600;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aurora-card-actions-recall{gap:10px}
+.aurora-feed-card-recall{cursor:default}
+.aurora-recall-empty>div{background:var(--surface-2);color:var(--ink-soft)}
+@media(max-width:640px){.aurora-recall-meta{font-size:11.5px}}
+.aurora-card-date{display:block;margin-top:3px;font-size:10.5px;font-weight:500;color:var(--ink-faint);text-transform:none;letter-spacing:0;opacity:.75}
+
+/* Pin is a quiet, secondary option next to the heart: visible but not shouting. */
+.aurora-pin{border:0;background:none;color:var(--ink-faint);cursor:pointer;opacity:.5;display:grid;place-items:center;padding:6px;border-radius:9px;flex:0 0 auto;transition:opacity .15s ease,color .15s ease,background .15s ease}
+.aurora-pin svg{display:block}
+.aurora-pin:hover{opacity:1;background:var(--surface-2);color:var(--ink-soft)}
+.aurora-pin.is-pinned{opacity:1;color:var(--accent-2)}
+.aurora-pin:disabled{opacity:.28;cursor:not-allowed}
+.aurora-pin:disabled:hover{background:none;color:var(--ink-faint)}
+.aurora-modal-actions .aurora-pin{width:50px;background:var(--surface-2);border:1px solid var(--border);border-radius:13px;opacity:1}
+.aurora-modal-actions .aurora-pin.is-pinned{border-color:var(--accent-2)}
+@media(max-width:640px){.aurora-pin{min-width:40px;min-height:40px;margin:-5px 0 0}}
+
+.aurora-pinned-section{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-2);overflow:hidden}
+.aurora-pinned-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:0;background:transparent;cursor:pointer;color:var(--ink-soft)}
+.aurora-pinned-toggle-label{display:flex;align-items:center;gap:7px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font:700 11px var(--font-body)}
+.aurora-pinned-toggle-label svg{color:var(--accent-2)}
+.aurora-pinned-toggle-label b{display:grid;min-width:18px;min-height:18px;place-items:center;padding:0 5px;border-radius:999px;background:var(--glass-strong);color:var(--ink);font-size:10.5px}
+.aurora-pinned-chevron{color:var(--ink-faint);font-size:13px;transition:transform .18s ease}
+.aurora-pinned-chevron.is-collapsed{transform:rotate(-90deg)}
+.aurora-pinned-list{display:grid;gap:10px;padding:0 12px 12px}
+.aurora-pinned-list[hidden]{display:none}
+.aurora-quota-notice{margin:10px 0 0;padding:9px 11px;border:1px solid oklch(74% .12 75/.55);border-radius:10px;background:oklch(96% .05 90);color:var(--ink-soft);font-size:12px;line-height:1.4}.aurora-capture-error{min-height:0;margin:0;color:#a12626;font-size:12px;line-height:1.4}.aurora-capture-error:not(:empty){margin:8px 0 10px}.aurora-capture-label textarea{display:block;width:100%;min-height:92px;resize:vertical;margin:6px 0 13px;padding:12px 14px;border:0;border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit}
+/* Deal me 5 (aurora-feed.js): the button, the thin-feed prompt, the topic picker and trial labels. */
+.aurora-deal{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:9px 16px;border:0;border-radius:20px;background:var(--grad-brand);color:#fff;font:700 13px var(--font-body);cursor:pointer;box-shadow:0 8px 18px -12px oklch(55% .2 290/.8)}.aurora-deal:disabled{background:var(--glass);color:var(--ink-faint);border:1px solid var(--border);box-shadow:none;cursor:default}.aurora-deal-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}.aurora-deal-topics{flex:0 0 auto;padding:8px 6px;text-decoration:underline}
+.aurora-deal-prompt{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px;border:1px dashed var(--border-strong);border-radius:var(--radius-card);background:var(--glass)}.aurora-deal-prompt b{display:block;font:700 14px var(--font-display);color:var(--ink)}.aurora-deal-prompt span{display:block;margin-top:2px;font-size:12.5px;color:var(--ink-soft)}.aurora-deal-prompt .aurora-deal-actions{margin-top:0}
+.aurora-capture-deal{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-soft)}
+.aurora-topic-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.aurora-topic-grid .aurora-chip{min-height:38px;padding:8px 14px;font-size:12.5px}
+.aurora-card-trial{display:inline-block;margin-top:4px;padding:1px 8px;border:1px solid var(--border);border-radius:10px;font-size:10.5px;font-weight:600;color:var(--ink-soft)}.aurora-feed-card.is-dealt{border-color:var(--border-strong);box-shadow:0 0 0 1px var(--border-strong)}
+/* The header copy sits between search and New card, so it's outlined rather than a second gradient button. */
+.aurora-header-deal{display:inline-block;line-height:20px;padding:9px 14px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font-family:var(--font-display);white-space:nowrap;box-shadow:none}.aurora-header-deal:disabled{border-color:var(--border)}
+.aurora-deal-left{display:inline-grid;min-width:18px;min-height:18px;place-items:center;margin-left:6px;padding:0 5px;border-radius:999px;background:var(--glass-strong);color:inherit;font:700 11px var(--font-body)}
+.aurora-deal-count{font-weight:600;opacity:.85}
+@media(max-width:640px){.aurora-header-deal{min-width:44px;min-height:44px;margin:0;padding:11px 12px}.aurora-deal-me{display:none}}
+/* One height for search, Deal me 5 and New card: sized by their own padding and
+   fonts, the search glyph's taller fallback font stood above its neighbours.
+   A button centres its own content; inline-flex here would drop the space in "+ New card". */
+.aurora-header-actions{display:flex;align-items:center;gap:7px}
+.aurora-header-actions>button{box-sizing:border-box;height:40px;margin:0}
+.aurora-support-link{display:inline-flex;white-space:nowrap;align-items:center;gap:5px;min-height:32px;margin-top:3px;border-radius:5px;color:var(--ink-soft);font:600 12px var(--font-body);text-decoration:none}
+.aurora-support-link svg{flex:none}
+.aurora-support-link:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.aurora-support-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:3px}
+@media(max-width:640px){.aurora-support-link{min-height:44px}}
+/* On a phone, search, Deal me 5 and New card can be wider than the room the
+   title leaves them. Rather than squeezing the title column until "Help &
+   feedback" breaks over two lines, the actions drop to their own row. */
+@media(max-width:640px){.aurora-feed-header{flex-wrap:wrap}.aurora-header-actions{margin-left:auto}}
+/* The feed's controls stick just under the 56px app header (z-index 100) and
+   above the cards. The negative margins stretch the opaque background across
+   .aurora-main's side and top padding, so cards never show around it. The
+   sandbox has no app header, so there they stick to the top. overflow-x on
+   .aurora-feed must be clip, not hidden: hidden makes it a scroll container
+   and the controls would stop sticking. flow-root keeps the progress
+   label's bottom margin inside the opaque block. */
+.aurora-feed-top{display:flow-root;position:sticky;top:56px;z-index:20;margin:-12px -22px 0;padding:12px 22px 0;background:var(--bg)}
+.demo-wrap .aurora-feed-top{top:0}
+/* Keyboard focus scrolls a card into view below the pinned controls, not under them. */
+.aurora-feed-card{scroll-margin-top:296px}
+@media(max-width:800px){.aurora-feed-top{margin:-12px -16px 0;padding:12px 16px 0}}
+/* On a phone (or a short landscape screen) the controls fill about half the
+   viewport, so pinning them leaves only a sliver of feed to scroll. There
+   they scroll away with the cards like the rest of the page. */
+@media(max-width:640px){.aurora-feed-top{margin:-12px -12px 0;padding:12px 12px 0}}
+@media(max-width:640px),(max-height:600px){.aurora-feed-top{position:static}.aurora-feed-card{scroll-margin-top:72px}}
+/* The card detail's "Snooze for N days" field, under its actions. */
+.aurora-snooze-days{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:var(--ink-faint);font-size:12px;font-weight:600}
+.aurora-snooze-days input{width:64px;min-height:36px;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink);font:600 13px var(--font-body);text-align:center}
+.aurora-card-actions-recall .aurora-quiet{flex:none}
+.aurora-card-actions-recall .aurora-recall-meta{margin-right:auto}
+/* Search and clear-search draw SVG icons (aurora-feed.js SEARCH_ICON). */
+.aurora-search svg{display:block;margin:auto}
+.aurora-empty div svg{width:28px;height:28px}
+/* New card form. Only inputs and textareas were styled, so the reminder's
+   "Repeats" select sat unstyled against its label and the next field, and
+   the file-type hint took .aurora-modal small's uppercase micro-label look
+   with "Save card" pressed right up against it. */
+.aurora-capture-label select{display:block;width:100%;margin:6px 0 13px;padding:12px 14px;border:0;border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:14px;font-weight:500}
+.aurora-capture-label small{display:block;margin:-6px 0 14px;color:var(--ink-faint);font-size:11.5px;font-weight:500;letter-spacing:0;text-transform:none}
+/* Save card is the form's one primary action; Deal me 5 under it is an
+   alternative, so it doesn't wear the same brand gradient. */
+.aurora-capture-deal .aurora-deal{border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink);box-shadow:none}
+/* One button pattern for the feed's actions, so the header, the empty feed,
+   the thin-feed prompt and the new-card sheet agree. Search, Deal me 5 and
+   New card share one shape (12px corners, 44px tall, display font). New card
+   is the primary action wherever it appears, so it alone wears the brand
+   gradient; Deal me 5 is always the outlined secondary beside it. */
+.aurora-new,.aurora-deal,.aurora-search{box-sizing:border-box;min-height:44px;border-radius:12px}.aurora-search{min-width:44px}
+.aurora-new,.aurora-deal{font:700 14px var(--font-display)}
+.aurora-deal{border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink);box-shadow:none}
+.aurora-header-actions>button{height:44px}
+/* The thin-feed prompt styles its own spans as a caption; the deals-left
+   count inside its button keeps the button's own size. */
+.aurora-deal-prompt .aurora-deal-count{display:inline;margin:0;font-size:inherit;color:inherit}
+.aurora-quick-add textarea{min-height:58px}.aurora-quick-hint{margin:-6px 0 12px;color:var(--ink-soft);font-size:12px;line-height:1.4}.aurora-quick-hint:empty{display:none}
+/* "Add to Google Calendar" in a reminder's detail view: a quiet link, like
+   "Open on GitHub" on an issue, not another action button. */
+.aurora-calendar{margin:10px 0 0}
+.aurora-calendar-link{color:var(--accent-2);font:700 13px var(--font-body);text-decoration:none}
+.aurora-calendar-link:hover{text-decoration:underline}
+.aurora-calendar-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px;border-radius:4px}
+/* On the feed card it stays in the background: small and faint until
+   hovered. The padding gives it a 24px tap target without taking more room. */
+.aurora-calendar-feed{margin:-3px 0 3px}
+.aurora-calendar-feed .aurora-calendar-link{color:var(--ink-faint);font:600 11.5px var(--font-body);display:inline-block;padding:5px 0}
+.aurora-calendar-feed .aurora-calendar-link:hover{color:var(--accent-2)}

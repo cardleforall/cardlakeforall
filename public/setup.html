@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Set up your Cardlake</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/account.css">
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/"><span class="brand-mark"><svg width="16" height="16" viewBox="-0.5 1.3 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="18" rx="2" transform="rotate(-8 10 14)"></rect><rect x="7" y="3" width="14" height="18" rx="2"></rect></svg></span>Cardlake</a></header>
+<main class="panel">
+  <p id="loading">Loading…</p>
+
+  <section id="open" hidden>
+    <span class="eyebrow">Welcome</span>
+    <h1>Set up your Cardlake</h1>
+    <p>Choose the name, email and password you'll sign in with. This Cardlake is yours: nobody else can sign in to it.</p>
+    <p>For your security, setup is open for one hour after your Cardlake first starts, then it locks.</p>
+    <p class="notice" id="open-notice"></p>
+    <form id="setup-form">
+      <label>Your name <input type="text" name="name" autocomplete="name" maxlength="100"></label>
+      <label>Email <input type="email" name="email" autocomplete="email" required></label>
+      <label>Password <span class="hint">At least 10 characters.</span><input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+      <label>Password again <input type="password" name="confirm" autocomplete="new-password" minlength="10" required></label>
+      <button type="submit" class="btn">Finish setup</button>
+      <p class="error" id="error" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <section id="done" hidden>
+    <span class="eyebrow">Already set up</span>
+    <h1>This Cardlake has an owner</h1>
+    <p>Someone has already finished setup. If that was you, sign in.</p>
+    <a class="btn" href="/signin" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Sign in</a>
+    <p class="fine">Didn't set it up yourself, or forgot your password? Follow the steps below to take it back.</p>
+  </section>
+
+  <section id="expired" hidden>
+    <span class="eyebrow">Setup has closed</span>
+    <h1>Reopen setup to continue</h1>
+    <p>For your security, setup closes one hour after your Cardlake first starts, so nobody else can claim it. You can reopen it from Vercel.</p>
+  </section>
+
+  <section id="reopen" hidden>
+    <h2 style="font:700 16px 'Space Grotesk',sans-serif;margin:22px 0 8px">How to reopen setup</h2>
+    <ol>
+      <li>In <a href="https://vercel.com/dashboard" target="_blank" rel="noopener">Vercel</a>, open this project, then <strong>Settings</strong> and <strong>Environment Variables</strong>.</li>
+      <li>Add a variable named <code>CARDLE_SETUP_OPEN</code> with the value <code>1</code>, and save.</li>
+      <li>Open <strong>Deployments</strong>, choose the latest one, and pick <strong>Redeploy</strong>.</li>
+      <li>Come back to this page and finish setup. Forgot your password? Use the same email: you keep all your cards. If someone else set up this Cardlake, use your own email: their account loses access.</li>
+      <li>Delete <code>CARDLE_SETUP_OPEN</code> again and redeploy once more, so nobody else can do the same.</li>
+    </ol>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const show = (...ids) => { $('loading').hidden = true; ids.forEach(id => { $(id).hidden = false; }); };
+  const time = iso => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  async function start() {
+    let status;
+    try {
+      const res = await fetch('/api/auth/setup', { credentials: 'same-origin' });
+      status = await res.json();
+      if (!res.ok) throw new Error(status.error || 'Could not check setup');
+    } catch (error) {
+      $('loading').textContent = `Could not reach your Cardlake: ${error.message}. Reload to try again.`;
+      return;
+    }
+    if (status.open) {
+      $('open-notice').textContent = status.reason === 'reopened'
+        ? 'Setup is reopened (CARDLE_SETUP_OPEN is set). Finishing it makes you the owner again and signs you in with this password. Afterwards, remove CARDLE_SETUP_OPEN in Vercel and redeploy.'
+        : `The first person to finish setup becomes the owner, so do it now. Setup closes at ${time(status.closes_at)}.`;
+      show('open');
+      if (status.reason === 'reopened') show('reopen');
+      return;
+    }
+    if (status.reason === 'done') show('done', 'reopen');
+    else show('expired', 'reopen');
+  }
+
+  $('setup-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const error = $('error');
+    error.textContent = '';
+    if (form.get('password') !== form.get('confirm')) { error.textContent = "The two passwords don't match."; return; }
+    const button = event.target.querySelector('button');
+    button.disabled = true;
+    try {
+      const res = await fetch('/api/auth/setup', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.get('name'), email: form.get('email'), password: form.get('password') }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Setup failed');
+      location.replace('/vault/index.html');
+    } catch (err) {
+      error.textContent = err.message;
+      button.disabled = false;
+    }
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

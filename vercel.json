@@ -1,0 +1,58 @@
+{
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/**/*.js": { "maxDuration": 10 }
+  },
+  "crons": [
+    { "path": "/api/cron/purge-retention", "schedule": "0 3 * * *" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000" },
+        { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; media-src 'self' blob:; connect-src 'self'; frame-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; report-uri /api/csp-report" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/vault/index.html" },
+    { "source": "/setup", "destination": "/setup.html" },
+    { "source": "/signin", "destination": "/signin.html" },
+    { "source": "/api/dashboard/stats", "destination": "/api/vault?resource=dashboard&action=stats" },
+    { "source": "/api/events", "destination": "/api/vault?resource=events" },
+    { "source": "/api/onboarding", "destination": "/api/vault?resource=onboarding" },
+    { "source": "/api/onboarding/samples", "destination": "/api/vault?resource=onboarding&action=samples" },
+    { "source": "/api/surprise", "destination": "/api/vault?resource=surprise" },
+    { "source": "/api/cron/purge-retention", "destination": "/api/vault?resource=retention" },
+    { "source": "/api/bookmarks", "destination": "/api/vault?resource=bookmarks" },
+    { "source": "/api/family", "destination": "/api/vault?resource=family" },
+    { "source": "/api/kanban", "destination": "/api/vault?resource=kanban" },
+    { "source": "/api/work", "destination": "/api/vault?resource=work" },
+    { "source": "/api/reminders", "destination": "/api/vault?resource=reminders" },
+    { "source": "/api/talking-points", "destination": "/api/vault?resource=talking-points" },
+    { "source": "/api/:resource(bookmarks|family|kanban|reminders|talking-points|work)/:id", "destination": "/api/vault?resource=:resource&id=:id" },
+    { "source": "/api/csp-report", "destination": "/api/vault?resource=csp-report" },
+    { "source": "/api/integrations", "destination": "/api/vault?resource=integrations" },
+    { "source": "/api/integrations/github/sync", "destination": "/api/vault?resource=integrations&provider=github&action=sync" },
+    { "source": "/api/integrations/github", "destination": "/api/vault?resource=integrations&provider=github" },
+    { "source": "/api/integrations/:integration/:action(onboarding|acknowledge)", "destination": "/api/vault?resource=integrations&integration=:integration&action=:action" },
+    { "source": "/api/auth/logout", "destination": "/api/auth?action=logout" },
+    { "source": "/api/auth/session", "destination": "/api/auth?action=session" },
+    { "source": "/api/auth/config", "destination": "/api/auth?action=config" },
+    { "source": "/api/auth/setup", "destination": "/api/auth?action=setup" },
+    { "source": "/api/auth/sign-in", "destination": "/api/auth?action=sign-in" },
+    { "source": "/api/auth/sign-out-everywhere", "destination": "/api/auth?action=sign-out-everywhere" },
+    { "source": "/api/auth/instance", "destination": "/api/auth?action=instance" },
+    { "source": "/api/auth/tokens", "destination": "/api/auth?action=tokens" },
+    { "source": "/api/auth/tokens/:id", "destination": "/api/auth?action=tokens&id=:id" },
+    { "source": "/.well-known/oauth-protected-resource", "destination": "/api/mcp?metadata=1" },
+    { "source": "/.well-known/oauth-authorization-server", "destination": "/api/auth?action=oauth-metadata" },
+    { "source": "/oauth/authorize", "destination": "/api/oauth?action=authorize" },
+    { "source": "/oauth/token", "destination": "/api/oauth?action=token" }
+  ]
+}

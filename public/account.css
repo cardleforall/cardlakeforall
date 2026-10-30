@@ -1,0 +1,52 @@
+/* Shared by the account pages: setup.html and signin.html. Styled
+   like the AI-assistant consent page (api/oauth.js) and welcome.html. */
+:root {
+  --ink: oklch(20% .02 275);
+  --muted: oklch(42% .02 275);
+  --line: oklch(45% .04 280 / .16);
+  --panel: oklch(99% .006 275 / .9);
+  --soft: oklch(95% .012 275);
+  --accent: oklch(52% .16 262);
+  --danger: oklch(52% .2 25);
+  --page: oklch(97% .01 280);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: oklch(95% .01 275);
+    --muted: oklch(75% .02 275);
+    --line: oklch(80% .04 280 / .18);
+    --panel: oklch(24% .02 275 / .92);
+    --soft: oklch(30% .02 275);
+    --accent: oklch(72% .14 262);
+    --danger: oklch(72% .16 25);
+    --page: oklch(18% .015 280);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Manrope', system-ui, sans-serif; background: var(--page); color: var(--ink); min-height: 100vh; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid oklch(62% .16 260 / .6); outline-offset: 2px; }
+.topbar { padding: 20px 24px; }
+.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; text-decoration: none; }
+.brand-mark { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4a86e9, #42b3e7); }
+.panel { max-width: 440px; margin: 6vh auto 48px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px; box-shadow: 0 30px 60px -35px oklch(28% .08 285 / .5); }
+.eyebrow { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--soft); border: 1px solid var(--line); padding: 5px 12px; border-radius: 20px; }
+h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; line-height: 1.2; margin: 12px 0 8px; }
+p { margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+ol { margin: 0 0 14px; padding-left: 20px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+code { font-size: 13px; background: var(--soft); border-radius: 5px; padding: 1px 5px; }
+form { display: flex; flex-direction: column; gap: 12px; margin: 6px 0 0; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 14px; font-weight: 600; color: var(--ink); }
+input[type=text], input[type=email], input[type=password] { font: 15px 'Manrope', system-ui, sans-serif; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+.hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+.btn { width: 100%; min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 700 15px 'Manrope', system-ui, sans-serif; cursor: pointer; margin-top: 4px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.notice { font-size: 13px; line-height: 1.5; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--ink); margin: 0 0 16px; }
+.fine { font-size: 12px; line-height: 1.5; margin: 14px 0 0; }
+.error { color: var(--danger); font-size: 13px; min-height: 1em; margin: 4px 0 0; }
+[hidden] { display: none !important; }
+@media (max-width: 640px) {
+  .topbar { padding: 16px; }
+  .panel { margin: 2vh 16px 40px; padding: 22px 18px; }
+  h1 { font-size: 23px; }
+}

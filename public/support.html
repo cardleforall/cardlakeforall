@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Support — Cardlake</title>
+<meta name="description" content="Help with this Cardlake.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root {
+    --ink: oklch(24% .03 280);
+    --muted: oklch(45% .03 280);
+    --faint: oklch(60% .02 280);
+    --border: oklch(90% .015 280);
+    --bg: oklch(98% .008 280);
+    --surface: #fff;
+    --accent: oklch(52% .2 285);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: oklch(94% .01 280); --muted: oklch(78% .02 280); --faint: oklch(64% .02 280);
+      --border: oklch(32% .02 280); --bg: oklch(17% .02 280); --surface: oklch(21% .02 280); --accent: oklch(74% .14 285);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.65 Manrope, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 72px; }
+  a { color: var(--accent); }
+  .back { font-size: 14px; font-weight: 600; text-decoration: none; }
+  h1 { margin: 18px 0 6px; font: 700 clamp(28px, 5vw, 38px)/1.15 'Space Grotesk', sans-serif; letter-spacing: -.02em; }
+  .lede { margin: 0 0 8px; color: var(--muted); font-size: 17px; }
+  .note { margin: 0 0 32px; color: var(--faint); font-size: 14px; }
+  .snag { margin: 12px 0 0; }
+  .snag em { display: block; color: var(--ink); font-style: normal; font-weight: 600; }
+  section { margin-top: 18px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  h2 { margin: 0 0 8px; font: 700 19px/1.3 'Space Grotesk', sans-serif; }
+  p { margin: 8px 0; }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 5px 0; }
+  code { font-size: 14px; }
+  footer { margin-top: 36px; color: var(--faint); font-size: 13px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Cardlake</a>
+  <h1>Support</h1>
+  <p class="lede">Something not working, or a question? The common snags and their fixes are below.</p>
+  <p class="note">New here? Cardlake is a personal knowledge and reminder app: your notes, learnings, bookmarks and work follow-ups in one daily feed.</p>
+
+  <section aria-labelledby="contact">
+    <h2 id="contact">Who runs this</h2>
+    <p>The person who set up this Cardlake runs it, for themselves, in their own Vercel and Neon accounts. There's no company behind it to write to. The <a href="/privacy.html">privacy page</a> says what's kept and for how long.</p>
+  </section>
+
+  <section aria-labelledby="signin">
+    <h2 id="signin">Signing in</h2>
+    <p class="snag"><em>"I forgot my password."</em>Follow "How to reopen setup" on <a href="/setup">the setup page</a> and set a new one with the same email. You keep all your cards.</p>
+    <p class="snag"><em>"I lost a phone or laptop."</em>Open <strong>About &amp; help</strong> and choose <strong>Sign out on all devices</strong>.</p>
+    <p class="snag"><em>"How do I sign in on a new device?"</em>Use the same email and password. You stay signed in there afterwards.</p>
+  </section>
+
+  <section aria-labelledby="connect">
+    <h2 id="connect">Connecting Claude or ChatGPT</h2>
+    <p>Follow the <a href="/mcp-setup.html">setup guide</a>. You sign in to this Cardlake when the assistant asks, and it only sees your own cards.</p>
+    <p class="snag"><em>"The tools look old or are missing."</em>Disconnect and reconnect Cardlake in the assistant's connector settings.</p>
+    <p class="snag"><em>"I want to cut an assistant off."</em>Remove Cardlake from its connector settings, or revoke its token under <strong>Connect AI</strong> in the app.</p>
+  </section>
+
+  <section aria-labelledby="android-sharing">
+    <h2 id="android-sharing">Saving from your Android phone</h2>
+    <p>Open this Cardlake in Chrome, then open the menu and choose <strong>Install app</strong>. Now you can share text or links from any app to Cardlake; tap <strong>Save card</strong>.</p>
+    <p>Photos and files can't be shared straight in yet. Add them in Cardlake with <strong>New card → File</strong>. Images, PDFs, text, Word and Excel files work, up to 4 MB each.</p>
+  </section>
+
+  <footer><a href="/privacy.html">Privacy</a> · Cardlake software, licensed under the AGPL-3.0, run here by this Cardlake's owner.</footer>
+</main>
+</body>
+</html>

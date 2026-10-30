@@ -1,0 +1,116 @@
+/* Integrations: the separated chip group in the feed filter row, GitHub
+   issue cards, the bar above a filtered integration, the one-time onboarding
+   sheet and the Manage panel (integrations.js). Built on Aurora's tokens. */
+
+/* ---- Filter row: divider + Integrations group ----
+   Above phone width the chips wrap, so every filter is in view. They used to
+   scroll sideways under a sticky integrations group, which on a laptop hid
+   "Misc" behind GitHub Issues and drew a full scrollbar under the row. On a
+   phone the row still scrolls sideways (see the 640px rule below). */
+.aurora-chip-group{display:flex;align-items:center;align-self:stretch;gap:inherit;flex:0 0 auto}
+.aurora-chip-divider{flex:0 0 1px;align-self:stretch;margin:4px 4px 4px 0;background:var(--border-strong)}
+/* Slightly narrower chips keep the core types plus GitHub and Email on one
+   row in the 760px feed column; more integrations wrap to a second row. */
+@media(min-width:641px){.aurora-chips{flex-wrap:wrap;overflow:visible}.aurora-chip{padding-left:11px;padding-right:11px}}
+.aurora-chip-integration{position:relative;display:inline-flex;align-items:center;gap:6px;border-style:solid;border-color:var(--border-strong);background:var(--surface)}
+.aurora-chip-integration svg{width:13px;height:13px;flex:0 0 auto}
+.aurora-chip-integration.active{background:var(--grad-brand);border-color:transparent;color:#fff}
+.aurora-chip-status{width:7px;height:7px;border-radius:50%;background:oklch(68% .16 150);box-shadow:0 0 0 2px var(--surface)}
+.aurora-chip-status.is-error{background:oklch(72% .16 70)}
+.aurora-chip-integration.active .aurora-chip-status{box-shadow:0 0 0 2px oklch(100% 0 0/.35)}
+.aurora-chip-new{padding:1px 6px;border-radius:999px;background:var(--grad-brand);color:#fff;font:800 9px var(--font-body);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
+.aurora-chip-integration.active .aurora-chip-new{background:oklch(100% 0 0/.25)}
+.aurora-chip-integration.is-new{animation:integNewPulse 2.4s ease-in-out 3}
+.aurora-chip-integration.is-setup{border-style:dashed;background:transparent;color:var(--ink-soft)}
+.aurora-chip-integration.is-setup span{font-size:13px;line-height:1;font-weight:700;color:var(--accent-2)}
+.aurora-chip-integration.is-setup:hover{border-color:var(--accent-2);color:var(--ink)}
+.aurora-chip-integration.is-soon{border-style:dashed;background:transparent;color:var(--ink-soft);cursor:default;opacity:.8}
+.aurora-chip-soon{padding:1px 6px;border-radius:999px;border:1px solid var(--border-strong);color:var(--ink-soft);font:800 9px var(--font-body);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
+@keyframes integNewPulse{0%,100%{box-shadow:0 0 0 0 oklch(62% .18 275/0)}50%{box-shadow:0 0 0 5px oklch(62% .18 275/.18)}}
+
+/* ---- GitHub issue cards: labels + a link back to the issue ---- */
+.aurora-issue-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.aurora-issue-label{padding:2px 8px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font:700 10.5px var(--font-body)}
+.aurora-issue-link{margin-left:auto;color:var(--accent-2);font:700 12px var(--font-body);text-decoration:none;white-space:nowrap}
+.aurora-issue-link:hover{text-decoration:underline}
+.aurora-issue-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px;border-radius:4px}
+
+/* ---- Bar above a filtered integration: what it's connected to + actions ---- */
+.aurora-integration-bar{display:flex;align-items:center;gap:11px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.aurora-integration-bar.is-error{border-color:oklch(74% .12 75/.6);background:oklch(97% .04 90)}
+.aurora-integration-bar-icon{display:grid;place-items:center;flex:0 0 32px;height:32px;border-radius:10px;background:linear-gradient(135deg,oklch(34% .03 265),oklch(46% .04 265));color:#fff}
+.aurora-integration-bar-text{min-width:0;flex:1}
+.aurora-integration-bar-text b{display:block;overflow:hidden;font:700 13.5px var(--font-display);text-overflow:ellipsis;white-space:nowrap}
+.aurora-integration-bar-text small{display:block;overflow:hidden;color:var(--ink-faint);font-size:11.5px;text-overflow:ellipsis;white-space:nowrap}
+.aurora-integration-bar.is-error small{color:oklch(45% .12 60)}
+.aurora-integration-bar-actions{display:flex;gap:6px;flex:0 0 auto}
+.aurora-integration-sync,.aurora-integration-manage{min-height:36px;padding:7px 12px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-2);color:var(--ink);font:700 12px var(--font-body);cursor:pointer}
+.aurora-integration-sync{background:var(--grad-brand);border-color:transparent;color:#fff}
+.aurora-integration-sync:disabled{opacity:.7;cursor:progress}
+.aurora-integration-sync:focus-visible,.aurora-integration-manage:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+
+/* ---- Onboarding sheet ---- */
+.integ-sheet{width:min(480px,100%);padding:24px 26px 26px}
+.integ-progress{display:flex;gap:6px;margin:2px 36px 20px 0;padding:0;list-style:none}
+.integ-progress li{flex:1;min-width:0}
+.integ-progress li::before{content:'';display:block;height:4px;border-radius:2px;background:var(--track)}
+.integ-progress li.is-done::before,.integ-progress li.is-current::before{background:var(--grad-brand)}
+.integ-progress li.is-current::before{opacity:.55}
+.integ-progress span{display:block;margin-top:6px;color:var(--ink-faint);font:700 10px var(--font-body);letter-spacing:.05em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.integ-progress li.is-current span{color:var(--ink)}
+.integ-body h2{margin:0 0 6px;font:700 21px/1.25 var(--font-display);letter-spacing:-.02em;outline:none}
+.integ-lede{color:var(--ink-soft);font-size:13.5px;line-height:1.55}
+.integ-hero{display:grid;place-items:center;width:52px;height:52px;margin-bottom:16px;border-radius:15px;background:var(--grad-brand);color:#fff;box-shadow:0 12px 26px -12px oklch(45% .14 258/.55)}
+.integ-points{display:grid;gap:9px;margin:16px 0 4px;padding:0;list-style:none}
+.integ-points li{position:relative;padding-left:26px;color:var(--ink);font-size:13.5px;line-height:1.45}
+.integ-points li::before{content:'✓';position:absolute;left:0;top:0;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:oklch(94% .04 275);color:var(--accent-2);font-size:11px;font-weight:800}
+.integ-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:22px}
+.integ-actions .integ-primary{margin-left:auto;min-height:44px}
+.integ-actions-stacked{flex-direction:column;align-items:stretch}
+.integ-actions-stacked .integ-primary{margin-left:0}
+.integ-actions .aurora-quiet{min-height:44px;padding:8px 6px;border-radius:9px;font-weight:600}
+.integ-actions .aurora-quiet:hover{background:var(--surface-2);color:var(--ink-soft)}
+.integ-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+.integ-link{display:inline-block;margin:10px 0 16px;color:var(--accent-2);font-size:13px;font-weight:700;text-decoration:none}
+.integ-link:hover{text-decoration:underline}
+.integ-fineprint{margin:-6px 0 14px;color:var(--ink-faint);font-size:12px;line-height:1.5}
+.integ-fineprint a{color:var(--accent-2);font-weight:700;text-decoration:none}
+.integ-form .aurora-capture-label input{font:500 14px var(--font-body)}
+.integ-error{margin:0;color:#a12626;font-size:12.5px;line-height:1.4}
+.integ-error:not(:empty){margin:10px 0 0}
+.integ-done{text-align:center}
+.integ-done .integ-lede{margin:0 auto;max-width:34ch}
+.integ-check{display:grid;place-items:center;width:64px;height:64px;margin:6px auto 16px;border-radius:50%;background:var(--grad-brand);color:#fff;box-shadow:0 14px 30px -12px oklch(45% .16 275/.6);animation:integPop .45s cubic-bezier(.2,1.4,.4,1) both}
+.integ-check path{stroke-dasharray:24;stroke-dashoffset:24;animation:integDraw .4s .2s ease forwards}
+.integ-breakdown{margin-top:8px;color:var(--ink-faint);font-size:12px;font-weight:600}
+.integ-warning{margin:12px 0 0;padding:9px 11px;border:1px solid oklch(74% .12 75/.55);border-radius:10px;background:oklch(96% .05 90);color:var(--ink-soft);font-size:12px;line-height:1.4;text-align:left}
+@keyframes integPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes integDraw{to{stroke-dashoffset:0}}
+
+/* ---- Manage panel ---- */
+.integ-manage-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.integ-manage-head h2{margin:0}
+.integ-hero-small{width:40px;height:40px;margin:0;border-radius:12px}
+.integ-details{display:grid;gap:0;margin:0 0 16px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.integ-details div{display:flex;justify-content:space-between;gap:14px;padding:10px 13px;border-top:1px solid var(--border)}
+.integ-details div:first-child{border-top:0}
+.integ-details dt{color:var(--ink-faint);font-size:12.5px;font-weight:600}
+.integ-details dd{margin:0;min-width:0;color:var(--ink);font-size:12.5px;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.integ-details .integ-link{margin:0}
+.integ-status-error{color:oklch(45% .12 60)}
+.integ-manage-action{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--border)}
+.integ-manage-action b{display:block;font:700 13.5px var(--font-display)}
+.integ-manage-action span{display:block;margin-top:2px;color:var(--ink-soft);font-size:12px;line-height:1.45}
+.integ-secondary,.integ-danger{flex:0 0 auto;min-height:40px;padding:8px 14px;border:1px solid var(--border-strong)!important;border-radius:999px;background:var(--surface-2)!important;color:var(--ink)!important;font:700 12.5px var(--font-body);cursor:pointer}
+.integ-danger{color:#a12626!important}
+.integ-confirm{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 6px;padding:10px 12px;border:1px solid oklch(70% .12 25/.5);border-radius:12px;background:oklch(97% .025 25)}
+.integ-confirm span{flex:1;min-width:140px;font-size:12.5px;font-weight:700}
+.integ-confirm .aurora-quiet{min-height:36px;padding:6px 10px;border-radius:9px;font-weight:600}
+.integ-danger-solid{min-height:36px;padding:7px 14px;background:#b42323;box-shadow:none}
+
+@media(max-width:800px){.integ-sheet{width:100%;padding:20px 18px 26px}}
+@media(max-width:480px){.aurora-integration-bar{flex-wrap:wrap}.aurora-integration-bar-actions{width:100%}.aurora-integration-bar-actions button{flex:1;min-height:40px}}
+/* On a phone the row scrolls sideways; the group, last in it, carries the
+   row's trailing padding so the final chip can scroll clear of the edge. */
+@media(max-width:640px){.aurora-chip-integration{min-height:36px}.aurora-chip-divider{margin:6px 4px 6px 0}.aurora-chips:has(.aurora-chip-group){padding-right:0}.aurora-chip-group{padding-right:12px}}
+@media(prefers-reduced-motion:reduce){.aurora-chip-integration.is-new,.integ-check,.integ-check path{animation:none;transition:none}.integ-check path{stroke-dashoffset:0}}

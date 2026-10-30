@@ -1,0 +1,24 @@
+.vercel/
+.vercel
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+tmp/
+dist/
+Vault Dashboard.html
+vault-output.html
+.env*
+
+# Personal notes stay out of the repository.
+content/vault/
+
+# Local editor and assistant settings.
+.claude/

@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardlake cards</title>
+<!--
+  The MCP Apps view (spec 2026-01-26) that Claude, ChatGPT and other hosts
+  render for list_feed, search_cards and get_card results. It is served as
+  the ui://cardle/cards.html resource (api/_lib/mcp-app.js).
+
+  Self-contained on purpose: no external scripts, styles, fonts, images or
+  network calls, so it runs under the host's strictest default CSP. Card
+  text only ever reaches the page through textContent, never as HTML, since
+  some of it (GitHub issue titles) comes from outside Cardlake.
+
+  Pin, Like, Remind later and Delete buttons appear when the host can run
+  tools for the view (hostCapabilities.serverTools): a click asks the host
+  to call pin_card, like_card, snooze_card, a delete tool and their undo
+  tools on Cardlake's server, the same tools the model uses. Delete asks on
+  the card first, because a deleted card can't be restored from the app;
+  the model is told to confirm before deleting, and a button mustn't skip
+  that. Hosts that can't get the same cards, read-only.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --cardle-accent: #7c5cff;
+    /* Fallbacks for the host's standard theme variables (see the MCP Apps
+       spec, "Theming"); a host that passes its own overrides these. */
+    --color-background-primary: light-dark(#ffffff, #18171c);
+    --color-background-secondary: light-dark(#f6f5fb, #222128);
+    --color-text-primary: light-dark(#17151f, #f3f2f7);
+    --color-text-secondary: light-dark(#5c5870, #b4b0c4);
+    --color-border-primary: light-dark(#e4e1ee, #34323c);
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --border-radius-md: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; }
+  body { font: 14px/1.45 var(--font-sans); color: var(--color-text-primary); padding: 4px; }
+  .summary { color: var(--color-text-secondary); font-size: 12px; margin: 0 2px 8px; }
+  .cards { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .card {
+    background: var(--color-background-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-left: 3px solid var(--cardle-accent);
+    border-radius: var(--border-radius-md);
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+  .type { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--cardle-accent); }
+  .badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--color-border-primary); color: var(--color-text-secondary); }
+  .title { font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+  .subtitle { color: var(--color-text-secondary); font-size: 12px; margin: 2px 0 0; overflow-wrap: anywhere; }
+  .body { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .open {
+    margin-top: 8px; font: inherit; font-size: 12px; cursor: pointer;
+    color: var(--cardle-accent); background: none; border: 0; padding: 0;
+  }
+  .open:hover, .open:focus-visible { text-decoration: underline; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .actions .open { margin-top: 0; margin-left: auto; }
+  .action {
+    font: inherit; font-size: 12px; cursor: pointer; padding: 2px 10px; border-radius: 999px;
+    color: var(--color-text-primary); background: transparent; border: 1px solid var(--color-border-primary);
+  }
+  .action[aria-pressed="true"] { color: var(--cardle-accent); border-color: var(--cardle-accent); }
+  .action:disabled { opacity: .55; cursor: default; }
+  .action.danger { color: light-dark(#b42840, #ff8a99); border-color: currentColor; }
+  .choice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .prompt { color: var(--color-text-secondary); font-size: 12px; }
+  .checklist { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .checklist li { overflow-wrap: anywhere; }
+  .checklist li[data-done="true"] { color: var(--color-text-secondary); text-decoration: line-through; }
+  .notice { color: var(--color-text-secondary); font-size: 12px; margin: 6px 0 0; }
+  .empty { color: var(--color-text-secondary); margin: 4px 2px; }
+  .footer { margin: 10px 2px 0; }
+</style>
+</head>
+<body>
+<main id="root" aria-live="polite"><p class="empty">Loading cards…</p></main>
+<script>
+(() => {
+  'use strict';
+  const PROTOCOL_VERSION = '2026-01-26';
+  const CARDLE_URL = '__CARDLE_ORIGIN__/';
+  const BODY_LIMIT = 280;
+  const TYPE_LABELS = {
+    reminder: 'Reminder', learning: 'Learning', kanban: 'GitHub issue', work: 'Work item',
+    family: 'Family', bookmark: 'Bookmark', talking_point: 'Misc', file: 'File',
+  };
+  const root = document.getElementById('root');
+  // Set from the host's answer to ui/initialize.
+  let canRunTools = false;
+  let canUpdateModelContext = false;
+
+  // --- JSON-RPC over postMessage, to the host only ---------------------------
+  let nextId = 1;
+  const pending = new Map();
+  const send = message => window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*');
+  const notify = (method, params) => send({ method, params });
+  function request(method, params) {
+    const id = nextId++;
+    send({ id, method, params });
+    return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  }
+
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent) return;
+    const message = event.data;
+    if (!message || message.jsonrpc !== '2.0') return;
+    if (message.method === undefined && pending.has(message.id)) {
+      const { resolve, reject } = pending.get(message.id);
+      pending.delete(message.id);
+      if (message.error) reject(new Error(message.error.message || 'Request failed'));
+      else resolve(message.result);
+      return;
+    }
+    if (message.method === 'ui/notifications/tool-result') render(message.params);
+    else if (message.method === 'ui/notifications/host-context-changed') applyHostContext(message.params);
+    else if (message.id !== undefined && (message.method === 'ui/resource-teardown' || message.method === 'ping')) send({ id: message.id, result: {} });
+  });
+
+  // --- Host theme and size ---------------------------------------------------
+  function applyHostCapabilities(capabilities) {
+    canRunTools = !!(capabilities && capabilities.serverTools);
+    canUpdateModelContext = !!(capabilities && capabilities.updateModelContext);
+  }
+
+  function applyHostContext(context) {
+    if (!context || typeof context !== 'object') return;
+    const style = document.documentElement.style;
+    if (context.theme === 'light' || context.theme === 'dark') style.colorScheme = context.theme;
+    const variables = context.styles && context.styles.variables;
+    if (variables && typeof variables === 'object') {
+      for (const [name, value] of Object.entries(variables)) {
+        if (name.startsWith('--') && typeof value === 'string') style.setProperty(name, value);
+      }
+    }
+  }
+
+  let lastHeight = 0;
+  function reportSize() {
+    const height = Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 0);
+    if (height && height !== lastHeight) {
+      lastHeight = height;
+      notify('ui/notifications/size-changed', { height });
+    }
+  }
+  if (typeof ResizeObserver === 'function') new ResizeObserver(reportSize).observe(document.body);
+
+  // --- Rendering: text only, never HTML ---------------------------------------
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null && text !== '') node.textContent = String(text);
+    return node;
+  }
+
+  // Only plain web links are opened, and only through the host.
+  function safeUrl(value) {
+    return typeof value === 'string' && /^https?:\/\//i.test(value.trim()) ? value.trim() : null;
+  }
+
+  function openButton(label, url) {
+    const button = el('button', 'open', label);
+    button.type = 'button';
+    button.addEventListener('click', () => { request('ui/open-link', { url }).catch(() => {}); });
+    return button;
+  }
+
+  function isDone(card) {
+    const meta = card.metadata || {};
+    return meta.completed === true || ['done', 'watched', 'skimmed'].includes(meta.status)
+      || (card.type === 'work' && meta.total > 0 && meta.done === meta.total);
+  }
+
+  // A work card's checklist is its content: without it the card shows only
+  // "1/3 items done". Long lists are cut short like the body is.
+  const CHECKLIST_LIMIT = 8;
+  function renderChecklist(card) {
+    const items = card.type === 'work' && card.metadata && Array.isArray(card.metadata.items) ? card.metadata.items : [];
+    if (!items.length) return null;
+    const list = el('ul', 'checklist');
+    list.setAttribute('aria-label', 'Checklist');
+    for (const entry of items.slice(0, CHECKLIST_LIMIT)) {
+      const done = !!(entry && typeof entry === 'object' && (entry.completed || entry.done || entry.checked));
+      const text = entry && typeof entry === 'object' ? entry.text : entry;
+      const line = el('li', '', `${done ? '\u2611' : '\u2610'} ${text == null ? '' : String(text)}`);
+      line.setAttribute('data-done', String(done));
+      list.appendChild(line);
+    }
+    if (items.length > CHECKLIST_LIMIT) list.appendChild(el('li', '', `…and ${items.length - CHECKLIST_LIMIT} more`));
+    return list;
+  }
+
+  function renderCard(card) {
+    const item = el('li', 'card');
+    fillCard(item, card);
+    return item;
+  }
+
+  // A choice (see offerChoice) takes the place of the card's buttons until
+  // it's answered or cancelled.
+  function fillCard(item, card, notice, choice) {
+    item.replaceChildren();
+    const meta = el('div', 'meta');
+    meta.appendChild(el('span', 'type', TYPE_LABELS[card.type] || 'Card'));
+    const badges = [];
+    if (card.pinned_at) badges.push('Pinned');
+    if (card.liked_at) badges.push('Liked');
+    if (isSnoozed(card)) badges.push('Snoozed');
+    if (isDone(card)) badges.push('Done');
+    for (const badge of badges) meta.appendChild(el('span', 'badge', badge));
+    item.appendChild(meta);
+    item.appendChild(el('p', 'title', card.title || 'Untitled'));
+    if (card.subtitle) item.appendChild(el('p', 'subtitle', card.subtitle));
+    if (card.body) {
+      const body = String(card.body);
+      item.appendChild(el('p', 'body', body.length > BODY_LIMIT ? `${body.slice(0, BODY_LIMIT)}…` : body));
+    }
+    const checklist = renderChecklist(card);
+    if (checklist) item.appendChild(checklist);
+    if (choice) {
+      item.appendChild(renderChoice(item, card, choice));
+      return;
+    }
+    const actions = el('div', 'actions');
+    if (canRunTools && card.id && card.type) {
+      for (const kind of ['pin', 'like']) actions.appendChild(actionButton(item, card, kind));
+      const later = remindLaterButton(item, card);
+      if (later) actions.appendChild(later);
+      if (DELETE_TOOLS[card.type]) actions.appendChild(plainButton('Delete', () => askToDelete(item, card), 'action danger'));
+    }
+    const url = safeUrl(card.metadata && (card.metadata.url || card.metadata.external_url));
+    if (url) actions.appendChild(openButton('Open link ↗', url));
+    if (actions.children.length) item.appendChild(actions);
+    if (notice) item.appendChild(el('p', 'notice', notice));
+  }
+
+  function plainButton(label, onClick, className = 'action') {
+    const button = el('button', className, label);
+    button.type = 'button';
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
+  // --- Pin and like, run by the host on Cardlake's server ------------------------
+  const ACTIONS = {
+    pin: { field: 'pinned_at', on: { label: 'Pin', tool: 'pin_card', verb: 'pin', done: 'pinned' }, off: { label: 'Unpin', tool: 'unpin_card', verb: 'unpin', done: 'unpinned' } },
+    like: { field: 'liked_at', on: { label: 'Like', tool: 'like_card', verb: 'like', done: 'liked' }, off: { label: 'Unlike', tool: 'unlike_card', verb: 'unlike', done: 'unliked' } },
+  };
+  const changes = [];
+
+  function actionButton(item, card, kind) {
+    const { field, on, off } = ACTIONS[kind];
+    const isSet = !!card[field];
+    const step = isSet ? off : on;
+    const button = plainButton(step.label, () => runAction(item, card, step));
+    button.setAttribute('aria-pressed', String(isSet));
+    return button;
+  }
+
+  // --- Remind later (snooze) ---------------------------------------------------
+  // The feed's snooze takes a number of days, so the button offers a few.
+  const SNOOZE_CHOICES = [{ label: '1 day', days: 1 }, { label: '3 days', days: 3 }, { label: '1 week', days: 7 }];
+  const UNSNOOZE = { tool: 'unsnooze_card', verb: 'bring back', done: 'brought back' };
+
+  function isSnoozed(card) {
+    return !!card.remind_later_until && new Date(card.remind_later_until) > new Date();
+  }
+
+  // Finished cards aren't in the feed, and Cardlake refuses to snooze them.
+  function remindLaterButton(item, card) {
+    if (isSnoozed(card)) return plainButton('Bring back now', () => runAction(item, card, UNSNOOZE));
+    if (isDone(card)) return null;
+    return plainButton('Remind later', () => offerChoice(item, card, 'Remind me in', SNOOZE_CHOICES.map(choice => ({
+      label: choice.label,
+      run: () => runAction(item, card, { tool: 'snooze_card', verb: 'snooze', done: 'snoozed', detail: ` for ${choice.label}`, args: { days: choice.days } }),
+    }))));
+  }
+
+  // --- Delete, after asking on the card -----------------------------------------
+  // GitHub issues and standalone files have no delete tool: issues belong to
+  // GitHub, and files are removed in the Cardlake web app.
+  const DELETE_TOOLS = {
+    reminder: 'delete_reminder', learning: 'delete_learning', work: 'delete_work_item',
+    family: 'delete_family_update', bookmark: 'delete_bookmark', talking_point: 'delete_talking_point',
+  };
+
+  function askToDelete(item, card) {
+    offerChoice(item, card, "Delete this card? It can't be restored from the app.", [{
+      label: 'Delete',
+      className: 'action danger',
+      run: () => runAction(item, card, { tool: DELETE_TOOLS[card.type], verb: 'delete', done: 'deleted', args: { id: card.id }, deletes: true }),
+    }]);
+  }
+
+  // Swaps the card's buttons for a question and its answers, plus Cancel,
+  // which puts the card back as it was.
+  function offerChoice(item, card, question, choices) {
+    fillCard(item, card, null, { question, choices });
+    reportSize();
+  }
+
+  function renderChoice(item, card, { question, choices }) {
+    const row = el('div', 'choice');
+    row.appendChild(el('span', 'prompt', question));
+    for (const choice of choices) row.appendChild(plainButton(choice.label, choice.run, choice.className));
+    row.appendChild(plainButton('Cancel', () => { fillCard(item, card); reportSize(); }));
+    return row;
+  }
+
+  function errorText(result, step) {
+    const text = result && Array.isArray(result.content) && result.content[0] && result.content[0].text;
+    return typeof text === 'string' && text.trim()
+      ? text.replace(/^Error:\s*/, '').slice(0, 200)
+      : `Couldn't ${step.verb} this card.`;
+  }
+
+  function runAction(item, card, step) {
+    for (const button of actionButtonsIn(item)) button.disabled = true;
+    // Feed actions name the card by type and id; delete tools take only its id.
+    const args = step.deletes ? step.args : { card_type: card.type, card_id: card.id, ...step.args };
+    request('tools/call', { name: step.tool, arguments: args }).then(result => {
+      if (!result || result.isError) return fillCard(item, card, errorText(result, step));
+      if (step.deletes) return showDeleted(item, card, step);
+      const state = result.structuredContent || {};
+      if ('pinned_at' in state) card.pinned_at = state.pinned_at;
+      if ('liked_at' in state) card.liked_at = state.liked_at;
+      if ('snoozed_until' in state) card.remind_later_until = state.snoozed_until;
+      fillCard(item, card);
+      tellModel(card, step);
+      reportSize();
+    }, () => fillCard(item, card, `Couldn't ${step.verb} this card here. Ask the assistant instead.`));
+  }
+
+  function actionButtonsIn(item) {
+    const found = [];
+    const walk = node => {
+      for (const child of node.children || []) {
+        if (child.tagName === 'BUTTON' && child.className.split(' ').includes('action')) found.push(child);
+        walk(child);
+      }
+    };
+    walk(item);
+    return found;
+  }
+
+  // A deleted card is gone from Cardlake, so nothing on it can be clicked.
+  function showDeleted(item, card, step) {
+    item.replaceChildren();
+    item.setAttribute('data-deleted', 'true');
+    item.appendChild(el('p', 'notice', `Deleted "${card.title || 'Untitled'}".`));
+    tellModel(card, step);
+    reportSize();
+  }
+
+  // Keeps the model's picture current: it saw the cards before the user
+  // changed them here. Each update replaces the last, so it lists every change.
+  function tellModel(card, step) {
+    const label = TYPE_LABELS[card.type] || 'card';
+    const noun = label === 'GitHub issue' ? label : label.toLowerCase();
+    changes.push(`The user ${step.done} the ${noun} "${card.title || 'Untitled'}" (${card.type} ${card.id})${step.detail || ''} in the Cardlake card view.`);
+    if (!canUpdateModelContext) return;
+    request('ui/update-model-context', { content: [{ type: 'text', text: changes.join('\n') }] }).catch(() => {});
+  }
+
+  function cardsFrom(result) {
+    const data = result && result.structuredContent;
+    if (!data || typeof data !== 'object') return null;
+    if (Array.isArray(data.cards)) return { cards: data.cards, total: data.total, more: !!data.next_cursor };
+    if (data.card && typeof data.card === 'object') return { cards: [data.card], total: 1, more: false };
+    return null;
+  }
+
+  function render(result) {
+    const view = [];
+    const found = cardsFrom(result);
+    if (!result || result.isError || !found) {
+      view.push(el('p', 'empty', "Couldn't show these cards here."));
+    } else if (!found.cards.length) {
+      view.push(el('p', 'empty', 'No cards.'));
+    } else {
+      const count = typeof found.total === 'number' ? found.total : found.cards.length;
+      if (found.cards.length > 1 || count > 1) {
+        view.push(el('p', 'summary', count > found.cards.length
+          ? `Showing ${found.cards.length} of ${count} cards`
+          : `${found.cards.length} ${found.cards.length === 1 ? 'card' : 'cards'}${found.more ? ' (more in Cardlake)' : ''}`));
+      }
+      const list = el('ul', 'cards');
+      for (const card of found.cards) if (card && typeof card === 'object') list.appendChild(renderCard(card));
+      view.push(list);
+    }
+    const footer = el('p', 'footer');
+    footer.appendChild(openButton('Open Cardlake ↗', CARDLE_URL));
+    view.push(footer);
+    root.replaceChildren(...view);
+    reportSize();
+  }
+
+  // --- Handshake -------------------------------------------------------------
+  request('ui/initialize', {
+    appInfo: { name: 'cardle-cards', version: '1.0.0' },
+    appCapabilities: { availableDisplayModes: ['inline'] },
+    protocolVersion: PROTOCOL_VERSION,
+  }).then(result => {
+    applyHostCapabilities(result && result.hostCapabilities);
+    applyHostContext(result && result.hostContext);
+  }, () => {})
+    .then(() => { notify('ui/notifications/initialized', {}); reportSize(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Source-level endpoint modules are retained for local testing and documentation.
+# Production consolidates Phase A routes through api/vault.js to stay within
+# the Vercel Hobby serverless-function limit (12 per deployment).
+api/bookmarks/**
+api/family/**
+api/kanban/**
+api/priorities/**
+api/reminders/**
+api/talking-points/**
+api/dashboard/**
+api/events/**
+api/work/**
+api/integrations/**
+api/vault/[...route].js
+api/auth/**
+api/onboarding/**
+api/surprise/**

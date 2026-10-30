@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Privacy &amp; data — Cardlake</title>
+<meta name="description" content="What this Cardlake stores, where it lives, and who can see it.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root {
+    --ink: oklch(24% .03 280);
+    --muted: oklch(45% .03 280);
+    --faint: oklch(60% .02 280);
+    --border: oklch(90% .015 280);
+    --bg: oklch(98% .008 280);
+    --surface: #fff;
+    --accent: oklch(52% .2 285);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: oklch(94% .01 280); --muted: oklch(78% .02 280); --faint: oklch(64% .02 280);
+      --border: oklch(32% .02 280); --bg: oklch(17% .02 280); --surface: oklch(21% .02 280); --accent: oklch(74% .14 285);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.65 Manrope, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 72px; }
+  a { color: var(--accent); }
+  .back { font-size: 14px; font-weight: 600; text-decoration: none; }
+  h1 { margin: 18px 0 6px; font: 700 clamp(28px, 5vw, 38px)/1.15 'Space Grotesk', sans-serif; letter-spacing: -.02em; }
+  .lede { margin: 0 0 8px; color: var(--muted); font-size: 17px; }
+  .note { margin: 0 0 32px; color: var(--faint); font-size: 13.5px; }
+  section { margin-top: 18px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  h2 { margin: 0 0 8px; font: 700 19px/1.3 'Space Grotesk', sans-serif; }
+  p { margin: 8px 0; }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 5px 0; }
+  code { font-size: 14px; }
+  footer { margin-top: 36px; color: var(--faint); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Cardlake</a>
+  <!-- Describes what the software does for the one person who runs it; keep
+       it in step with the code when what is stored changes. -->
+  <h1>Privacy &amp; data</h1>
+  <p class="lede">What this Cardlake stores about you, where it lives, and who can see it.</p>
+  <p class="note">This Cardlake is run privately by the person who set it up, its owner, on their own Vercel and Neon accounts, for themselves. It has one account, the owner's. It isn't a service run by a company, and nothing is sent to the people who make Cardlake.</p>
+
+  <section aria-labelledby="where">
+    <h2 id="where">Where your data lives</h2>
+    <p>Everything is kept in the owner's own accounts: cards, accounts and history in a Postgres database on <strong>Neon</strong>, attached files in private <strong>Vercel Blob</strong> storage, and the app itself on <strong>Vercel</strong>. Nobody else runs a copy of it, and nothing is sent to the people who make Cardlake.</p>
+  </section>
+
+  <section aria-labelledby="yours">
+    <h2 id="yours">Your cards</h2>
+    <p>The reminders, learnings, work items, family updates, bookmarks, Misc cards and files you add belong to the owner's account.</p>
+    <p>Deleting a card removes it everywhere you see it. The database keeps a deleted marker on the row rather than erasing it straight away.</p>
+    <p>Starter cards, and cards added by "Deal me 5", are removed after 14 days unless you like, pin or edit them or attach a file.</p>
+  </section>
+
+  <section aria-labelledby="signin">
+    <h2 id="signin">Signing in</h2>
+    <p>The owner's account is a name, email address and password. Only a scrambled form of the password (a bcrypt hash) is stored, so it can't be read back, even from the database. The email address isn't checked: it is simply what you sign in with.</p>
+    <p>Cardlake sets a cookie to keep you signed in on each device. It lasts 30 days from the last time you used Cardlake there, and <em>Sign out on all devices</em> under About &amp; help ends it everywhere. A short-lived cookie is also set while you approve an AI assistant's access. Display preferences are kept in your browser's storage and never leave it.</p>
+  </section>
+
+  <section aria-labelledby="github">
+    <h2 id="github">GitHub Issues</h2>
+    <p>If you connect GitHub Issues, Cardlake stores your access token, encrypted before it is written to the database and never shown back to anyone, the repository's name, and a copy of its issues so they can appear in your feed. Disconnecting deletes the token and takes the issues out of your feed.</p>
+  </section>
+
+  <section aria-labelledby="assistants">
+    <h2 id="assistants">AI assistants</h2>
+    <p>An assistant such as Claude or ChatGPT can reach your cards only after you connect it, and only your own. Tokens you create under <em>Connect AI</em> can be revoked there at any time.</p>
+    <p>When you ask a connected assistant to read or change your cards, the cards involved pass through that assistant's provider (for example Anthropic or OpenAI) to answer you. Their own privacy terms cover what happens on their side. Cardlake itself sends nothing to an AI provider, and doesn't use your cards to train anything.</p>
+  </section>
+
+  <section aria-labelledby="activity">
+    <h2 id="activity">Your activity history</h2>
+    <p>Cardlake keeps a history of what you do in it, to order your daily feed. It stays in your own database: cards you create, edit or delete (which fields changed, not what you typed), what you do in the feed and which cards you open, searches and filters, signing in and out, and the tools an AI assistant uses for you. It never records the text of your cards or any password or token.</p>
+  </section>
+
+  <section aria-labelledby="retention">
+    <h2 id="retention">How long things are kept</h2>
+    <p>A daily job deletes data once it's past these periods: deleted cards and their files after 90 days, and the activity history after 24 months. Cards you keep stay until you delete them.</p>
+  </section>
+
+  <section aria-labelledby="others">
+    <h2 id="others">Other services involved</h2>
+    <ul>
+      <li><strong>Vercel</strong> and <strong>Neon</strong>, which host this Cardlake for its owner.</li>
+      <li><strong>GitHub</strong>, contacted by the server only if you connect it.</li>
+      <li><strong>Sites your cards link to</strong>: with media previews on, your browser loads a link's thumbnail straight from that site, which sees your IP address. The Previews control in the feed turns this off.</li>
+      <li>Whichever <strong>AI assistant</strong> you connect, only if you connect one.</li>
+    </ul>
+  </section>
+
+  <footer>Cardlake software, licensed under the AGPL-3.0, run here by this Cardlake's owner.</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cardlake | Connect an AI assistant over MCP</title>
+<meta name="description" content="Connect Claude, ChatGPT, Gemini, or any MCP client to your Cardlake feed in a few steps.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234a86e9'/%3E%3Cstop offset='1' stop-color='%2342b3e7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='34' height='34' rx='10' fill='url(%23g)'/%3E%3Csvg x='8' y='8' width='18' height='18' viewBox='-0.5 1.3 24 24' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='14' height='18' rx='2' transform='rotate(-8 10 14)'/%3E%3Crect x='7' y='3' width='14' height='18' rx='2'/%3E%3C/svg%3E%3C/svg%3E">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-family: 'Manrope', sans-serif; background: oklch(97% .01 280); color: oklch(20% .02 275); overflow-x: hidden; }
+  a { color: oklch(52% .16 262); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .grad-bg { background: linear-gradient(120deg, #3674d6, #24a4dd); }  /* the site's primary button */
+  .grad-bg.mark { background: linear-gradient(135deg, #4a86e9, #42b3e7); }  /* the Cardlake mark, as in the landing nav */
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; color: oklch(20% .02 275); }
+  .guide-wrap { max-width: 640px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 8px 24px 80px; }
+  .guide-card { background: oklch(99% .006 275 / .9); border: 1px solid oklch(45% .04 280 / .16); border-radius: 18px; padding: 32px; box-sizing: border-box; box-shadow: 0 30px 60px -35px oklch(28% .08 285 / .5); }
+  .step-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: oklch(95% .012 275); border: 1px solid oklch(45% .04 280 / .16); font-size: 12px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: oklch(42% .02 275); flex-shrink: 0; }
+  .step-head { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  .step-head h2 { margin: 0; font-size: 18px; }
+  .guide-p { margin: 0 0 12px; font-size: 14px; line-height: 1.65; color: oklch(30% .02 275); }
+  .guide-p:last-child { margin-bottom: 0; }
+  .guide-list { margin: 0 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.65; color: oklch(30% .02 275); }
+  .guide-list li { margin-bottom: 4px; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 12.5px; background: oklch(95% .012 275); border: 1px solid oklch(45% .04 280 / .16); border-radius: 5px; padding: 1px 5px; }
+  pre { margin: 0 0 14px; background: oklch(20% .02 275); border-radius: 10px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: none; border: 0; padding: 0; color: oklch(94% .01 280); font-size: 12.5px; line-height: 1.6; }
+  .client-name { font-size: 13px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: oklch(20% .02 275); margin: 16px 0 8px; }
+  .client-name:first-of-type { margin-top: 4px; }
+  .divider { border: 0; border-top: 1px solid oklch(45% .04 280 / .16); margin: 24px 0; }
+  .field-addr { display: inline-block; font-size: 12.5px; }
+  .other-clients summary { cursor: pointer; font-size: 14px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: oklch(30% .02 275); }
+  .other-clients summary:hover { color: oklch(20% .02 275); }
+  .other-clients[open] summary { margin-bottom: 14px; }
+  .other-clients .client-name:first-of-type { margin-top: 16px; }
+  .connect-ai-note { margin: -4px 0 12px; font-size: 13px; line-height: 1.6; color: oklch(42% .02 275); }
+  @media (max-width: 520px) {
+    .guide-wrap { padding: 8px 16px 60px; }
+    .guide-card { padding: 22px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div style="width: 100%; box-sizing: border-box; padding: 22px 24px;">
+  <a href="/" style="display: inline-flex; align-items: center; gap: 9px;">
+    <span class="grad-bg mark" style="width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="16" height="16" viewBox="-0.5 1.3 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="18" rx="2" transform="rotate(-8 10 14)"></rect><rect x="7" y="3" width="14" height="18" rx="2"></rect></svg>
+    </span>
+    <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; color: oklch(20% .02 275);">Cardlake</span>
+  </a>
+</div>
+
+<div class="guide-wrap">
+
+  <div style="text-align: center; margin-bottom: 24px;">
+    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: oklch(42% .02 275); background: oklch(95% .006 275); border: 1px solid oklch(45% .04 280 / .16); padding: 5px 12px; border-radius: 20px; text-transform: uppercase;">Cardlake MCP</span>
+    <h1 style="margin: 14px 0 0; font-size: 28px; line-height: 1.2;">Connect an AI assistant to your Cardlake feed</h1>
+    <p style="margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: oklch(42% .02 275);">Cardlake is a personal knowledge and reminder app that brings notes, learnings, bookmarks and work follow-ups into one daily feed. It has a built-in <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener noreferrer">MCP</a> server that lets Claude, ChatGPT, Gemini, or anything else that speaks MCP read and manage your cards directly. Ask it to add a reminder, check your feed, or tick off a checklist, and it can just do it.</p>
+  </div>
+
+  <div class="guide-card">
+
+    <h2>How does connecting Cardlake work?</h2>
+    <p class="guide-p">Add Cardlake's server address to a compatible assistant, authorize access to your Cardlake account, then ask the assistant to save or retrieve a card. Sign in with your Cardlake email and password in each assistant to reach the same feed. Connector availability depends on your assistant, plan and workspace settings.</p>
+    <p class="guide-p">The connection shares your saved Cardlake items, not your full chat history.</p>
+    <hr class="divider">
+
+    <div class="step-head"><span class="step-num">1</span><h2>Add Cardlake as a connector</h2></div>
+    <p class="guide-p">Using <strong>Claude.ai, Claude Desktop, or ChatGPT</strong>? This is all you need. There's no separate sign-in and no token to copy.</p>
+    <p class="guide-p">Server address: <code class="field-addr" data-connect-ai-address>/api/mcp on this site</code></p>
+    <div class="client-name">Claude</div>
+    <div data-connect-ai-steps="claude" data-list-class="guide-list"></div>
+    <div class="client-name">ChatGPT</div>
+    <div data-connect-ai-steps="chatgpt" data-list-class="guide-list"></div>
+
+    <hr class="divider">
+
+    <div class="step-head"><span class="step-num">2</span><h2>Try it</h2></div>
+    <p class="guide-p">Ask your assistant something like:</p>
+    <div data-connect-ai-prompts data-list-class="guide-list"></div>
+    <p class="guide-p">It only sees and changes <em>your</em> Cardlake data, nobody else's.</p>
+
+    <hr class="divider">
+
+    <details class="other-clients">
+      <summary>Using Claude Code, Gemini, or another assistant instead?</summary>
+      <p class="guide-p">These take a token instead of signing you in directly.</p>
+      <ol class="guide-list">
+        <li>Open your <a href="/vault/index.html">Cardlake vault</a>, sign in, and click <strong>Connect AI</strong> next to your name.</li>
+        <li>Give the token a name, such as &ldquo;Claude Code&rdquo;, and click <strong>Generate token</strong>.</li>
+        <li>Copy it right away; it's shown only once. Keep it as secret as a password.</li>
+      </ol>
+
+      <div class="client-name">Claude Code</div>
+      <pre><code>claude mcp add --transport http cardlake <span data-connect-ai-address>YOUR_CARDLAKE/api/mcp</span> \
+  --header "Authorization: Bearer YOUR_TOKEN_HERE"</code></pre>
+
+      <div class="client-name">Gemini (CLI or app)</div>
+      <p class="guide-p">Add an MCP server entry pointing at <code class="field-addr" data-connect-ai-address>YOUR_CARDLAKE/api/mcp</code>, with an <code>Authorization: Bearer YOUR_TOKEN_HERE</code> header. The exact settings screen varies by version.</p>
+
+      <p class="guide-p">Back in the <strong>Connect AI</strong> panel, you can see every token you've created and revoke any of them at any time. Whatever was using it stops working right away.</p>
+    </details>
+
+
+  </div>
+
+  <p style="text-align: center; margin: 24px 0 0;"><a href="/">&larr; Back to Cardlake</a></p>
+
+</div>
+
+<script src="/vault/assets/connect-ai.js"></script>
+</body>
+</html>
