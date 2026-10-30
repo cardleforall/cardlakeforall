@@ -50,11 +50,13 @@ Capture, one vault, review, and streaks each map to how memory and habits work. 
 Your own Cardlake, free on Vercel's and Neon's free plans, in about 10 minutes.
 You won't need a terminal, a password generator or Google Cloud.
 
-1. **Make a GitHub account** at [github.com/signup](https://github.com/signup),
-   if you don't have one. Cardlake's code lives there, in your own copy.
-2. **Make a Vercel account** at [vercel.com/signup](https://vercel.com/signup)
-   and choose **Continue with GitHub**. The free Hobby plan is enough.
-3. **Click the button:**
+1. **Sign up at Vercel first,** at [vercel.com/signup](https://vercel.com/signup):
+   choose **Continue with GitHub**. No GitHub account yet? GitHub's sign-in
+   page has **Create an account** ([github.com/signup](https://github.com/signup)),
+   then brings you back. Cardlake's code will live in your GitHub account, in
+   your own copy. The free Hobby plan is enough. Finish everything Vercel asks,
+   including verifying your account, until it shows its dashboard.
+2. **Then come back here and click the button:**
 
    [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fcardleforall%2Fcardlakeforall&project-name=cardlake-self-hosted&repository-name=cardlake-self-hosted&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D)
 
@@ -64,16 +66,17 @@ You won't need a terminal, a password generator or Google Cloud.
    - **Neon:** your database. Choose the free plan and create it.
    - **Blob:** where files you attach to cards are kept. Create it.
 
-   Then click **Deploy** and wait a minute or two.
+   Then click **Deploy** and wait a minute or two. If Vercel shows its
+   dashboard instead of your new project, come back and click the button again.
 
-4. **Open your site and set your password.** When Vercel says it's done,
+3. **Open your site and set your password.** When Vercel says it's done,
    click the picture of your site, or **Visit**. Cardlake asks for your name,
    email and a password: this is your account. **Do this right away:** for
    your security, setup is open for one hour after your site first starts,
    then it locks, so nobody else can claim it. (Missed it? The setup page
    explains how to reopen it.)
 
-5. **Optional: connect Claude or ChatGPT.** In Cardlake, click **Connect AI**
+4. **Optional: connect Claude or ChatGPT.** In Cardlake, click **Connect AI**
    and follow the steps. Your assistant can then read and add cards for you.
 
 **It's yours alone.** Your Cardlake has one account, yours. There's nobody to
