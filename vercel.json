@@ -23,6 +23,7 @@
     { "source": "/", "destination": "/vault/index.html" },
     { "source": "/setup", "destination": "/setup.html" },
     { "source": "/signin", "destination": "/signin.html" },
+    { "source": "/updates", "destination": "/updates.html" },
     { "source": "/api/dashboard/stats", "destination": "/api/vault?resource=dashboard&action=stats" },
     { "source": "/api/events", "destination": "/api/vault?resource=events" },
     { "source": "/api/onboarding", "destination": "/api/vault?resource=onboarding" },

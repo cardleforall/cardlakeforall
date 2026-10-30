@@ -1,0 +1,46 @@
+# Update Cardlake: replaces your copy's code with the latest Cardlake.
+# Run it from your repository's Actions tab: Update Cardlake, then Run
+# workflow. Vercel deploys the new version, and the database updates itself
+# on its first request. Your cards are kept: they live in the database, not
+# in this repository.
+name: Update Cardlake
+
+on:
+  workflow_dispatch:
+    inputs:
+      overwrite_my_changes:
+        description: Update even though I changed the code (my changes will be lost)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    # Cardlake's own repository is where updates come from.
+    if: github.repository != 'cardleforall/cardlakeforall'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch the latest Cardlake
+        env:
+          UPSTREAM: ${{ vars.CARDLAKE_UPSTREAM || 'cardleforall/cardlakeforall' }}
+        run: git fetch --no-tags "https://github.com/$UPSTREAM.git" main
+
+      - name: Update your copy
+        env:
+          OVERWRITE: ${{ inputs.overwrite_my_changes }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          flag=""
+          if [ "$OVERWRITE" = "true" ]; then flag="--overwrite"; fi
+          # The latest Cardlake's script, not this copy's, so a fix to
+          # updating reaches copies on their next update.
+          git show FETCH_HEAD:scripts/update_from_upstream.sh > "$RUNNER_TEMP/update_from_upstream.sh"
+          bash "$RUNNER_TEMP/update_from_upstream.sh" "$(git rev-parse FETCH_HEAD)" $flag
+          git push origin "HEAD:$GITHUB_REF_NAME"

@@ -263,6 +263,20 @@ const res = await call(auth, { query: { action: 'instance' }, cookie });
 assert.deepEqual(res.body.sync_token, { source: 'environment', value: null });
 """)
 
+    def test_the_owner_learns_which_github_repository_their_copy_deploys_from(self):
+        # /updates links to it (public/updates.js).
+        self.run_node(r"""
+for (const name of ['VERCEL_GIT_PROVIDER', 'VERCEL_GIT_REPO_OWNER', 'VERCEL_GIT_REPO_SLUG', 'VERCEL_GIT_COMMIT_REF']) delete process.env[name];
+await database();
+const cookie = await owner();
+const instance = async () => (await call(auth, { query: { action: 'instance' }, cookie })).body.repository;
+assert.equal(await instance(), null, 'not deployed from Git: the page asks instead');
+Object.assign(process.env, { VERCEL_GIT_PROVIDER: 'github', VERCEL_GIT_REPO_OWNER: 'olive', VERCEL_GIT_REPO_SLUG: 'my-cardlake', VERCEL_GIT_COMMIT_REF: 'main' });
+assert.deepEqual(await instance(), { full_name: 'olive/my-cardlake', branch: 'main' });
+process.env.VERCEL_GIT_PROVIDER = 'gitlab';
+assert.equal(await instance(), null, 'only GitHub has the Update Cardlake workflow');
+""")
+
 
 @unittest.skipUnless(PGLITE.is_dir(), "run `npm ci` to install the PGlite dev dependency")
 class McpOAuthWithPasswordTests(Scenarios):

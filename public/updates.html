@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Get Cardlake updates</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/account.css">
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/"><span class="brand-mark"><svg width="16" height="16" viewBox="-0.5 1.3 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="18" rx="2" transform="rotate(-8 10 14)"></rect><rect x="7" y="3" width="14" height="18" rx="2"></rect></svg></span>Cardlake</a></header>
+<main class="panel">
+  <p id="loading">Loading…</p>
+
+  <section id="signed-out" hidden>
+    <span class="eyebrow">Updates</span>
+    <h1>Sign in first</h1>
+    <p>Only the owner of this Cardlake can turn on updates.</p>
+    <a class="btn" href="/signin" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Sign in</a>
+  </section>
+
+  <section id="ready" hidden>
+    <span class="eyebrow">Updates</span>
+    <h1>Get Cardlake updates</h1>
+    <p>Your Cardlake doesn't update by itself. Turn on updates once, then get the latest version whenever you like. You keep all your cards: they live in your database, not in your code.</p>
+
+    <form id="repo-form" hidden>
+      <label>Your copy on GitHub <span class="hint">The repository your Cardlake deploys from, like <code>your-name/cardlake</code>.</span><input type="text" name="repo" autocomplete="off" spellcheck="false" required></label>
+      <button type="submit" class="btn">Continue</button>
+      <p class="error" id="repo-error" aria-live="polite"></p>
+    </form>
+
+    <div id="steps" hidden>
+      <h2 style="font:700 16px 'Space Grotesk',sans-serif;margin:22px 0 8px">1. Turn on updates (once)</h2>
+      <p>GitHub opens with the update file filled in. Click <strong>Commit changes</strong>, then <strong>Commit changes</strong> again. If GitHub says the file already exists, updates are already on.</p>
+      <a class="btn" id="turn-on" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Turn on updates</a>
+
+      <h2 style="font:700 16px 'Space Grotesk',sans-serif;margin:22px 0 8px">2. Get the latest version</h2>
+      <p>Open <a id="run-update" target="_blank" rel="noopener">Update Cardlake</a> on GitHub and click <strong>Run workflow</strong>, then <strong>Run workflow</strong> again. Vercel deploys the new version a minute or two later.</p>
+      <p class="fine">If you've changed Cardlake's code yourself, the update stops rather than erase your changes, and says how to go ahead anyway.</p>
+    </div>
+  </section>
+</main>
+<script src="/updates.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ unless the owner changed the code, and keeps its own workflows."""
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import os
 import shutil
 import subprocess
@@ -96,12 +97,44 @@ class UpdateCardlakeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.files()['app.js'], 'two\n')
 
+    def test_a_deploy_button_copy_without_workflows_or_env_example_still_updates(self):
+        # Vercel's Deploy button copies neither .github/workflows nor
+        # .env.example, so their absence isn't a change of the owner's. Every
+        # Cardlake version here has .env.example.
+        self.cardlake = self.temp / 'cardlake-with-env-example'
+        self.init(self.cardlake)
+        self.commit(self.cardlake, {**V1, '.env.example': 'A=\n'}, 'v1 with .env.example')
+        self.commit(self.cardlake, {**V2, '.env.example': 'A=\n'}, 'v2 with .env.example')
+        self.v2 = self.git(self.cardlake, 'rev-parse', 'HEAD')
+        self.make_copy({'app.js': 'one\n', 'gone.txt': 'old\n'})
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.files(), {'app.js': 'two\n', 'new.txt': 'new\n', '.env.example': 'A=\n'})
+        self.assertIn('copy those files', result.stdout)
+
+    def test_updates_page_serves_the_same_workflow_it_asks_the_owner_to_commit(self):
+        served = ROOT / 'public' / 'update-cardlake.yml'
+        self.assertEqual(served.read_bytes(), WORKFLOW.read_bytes(),
+                         'copy .github/workflows/update-cardlake.yml to public/update-cardlake.yml')
+        page = (ROOT / 'public' / 'updates.js').read_text(encoding='utf-8')
+        self.assertIn("const WORKFLOW_PATH = '.github/workflows/update-cardlake.yml';", page)
+        self.assertIn("fetch('/update-cardlake.yml')", page)
+        self.assertIn('https://github.com/${repo}/new/', page)
+        self.assertIn('https://github.com/${repo}/actions/workflows/update-cardlake.yml', page)
+        rewrites = json.loads((ROOT / 'vercel.json').read_text(encoding='utf-8'))['rewrites']
+        self.assertIn({'source': '/updates', 'destination': '/updates.html'}, rewrites)
+        # Owners find it from the README and the support page.
+        self.assertIn('`/updates`', (ROOT / 'README.md').read_text(encoding='utf-8'))
+        self.assertIn('<a href="/updates">', (ROOT / 'public' / 'support.html').read_text(encoding='utf-8'))
+
     def test_the_workflow_only_runs_by_hand_and_never_in_cardlakes_own_repository(self):
         workflow = WORKFLOW.read_text(encoding='utf-8')
         self.assertIn('workflow_dispatch:', workflow)
         self.assertNotIn('schedule:', workflow)
         self.assertIn("if: github.repository != 'cardleforall/cardlakeforall'", workflow)
-        self.assertIn('scripts/update_from_upstream.sh', workflow)
+        # Cardlake's newest script runs, so a copy made before a fix to
+        # updating still gets it.
+        self.assertIn('git show FETCH_HEAD:scripts/update_from_upstream.sh', workflow)
 
 
 if __name__ == '__main__':

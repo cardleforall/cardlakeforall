@@ -16,7 +16,7 @@ const API_DIR = path.join(ROOT, 'api');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const PORT = Number(process.env.PORT) || 3000;
 // vercel.json's page rewrites, e.g. "/setup" -> "/setup.html".
-const ACCOUNT_PAGES = new Set(['/setup', '/signin']);
+const ACCOUNT_PAGES = new Set(['/setup', '/signin', '/updates']);
 
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
