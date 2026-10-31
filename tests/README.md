@@ -9,14 +9,37 @@ tests/
   run_tests.sh
 ```
 
-**`tests/unit/`**: one file per functional area (schema, limits, auth,
-setup and sign-in, sessions, API endpoints, vault frontend, migrate, repo
-hygiene). Everything here is a source/regex check against a shipped file, or an
-isolated Node/Python snippet exercising a pure function in-process (cookie
-signing, feed rotation math, limit enforcement, the auth dispatcher). Nothing
-opens a socket. `_paths.py` holds the shared repo-path constants and helpers
-every file needs, so each test file stays focused on its own domain instead
-of repeating 30 lines of path setup.
+**`tests/unit/`**: offline, one `test_*.py` per feature. Python's
+`unittest` is the only runner: discovery finds `test_*.py`, and every Node
+file here runs only because a `test_*.py` calls it. There are four kinds of
+file:
+
+| File | What it is |
+|---|---|
+| `test_*.py` | The entry points. Source checks against shipped files (markup, wiring, docs), plus a subprocess call per Node case. |
+| `*_scenarios.js` | Named cases, one per Node process: `node tests/unit/x_scenarios.js <name>`. Most drive the real API handlers against real Postgres in memory (PGlite, `pg_harness.js`); `security_scenarios.js` tests pure helpers the same way. Each ends with `require('./scenario_runner').runScenario(scenarios);`, which also gives `--list`. |
+| `*.test.js`, `owner_journey.js` | One script that runs all its cases in one go: pure front-end or helper functions, or a whole walk through a fresh deployment. |
+| `_paths.py`, `pg_harness.js`, `scenario_runner.js`, `vercel_router.js` | Shared helpers, not tests. |
+
+`test_suite_wiring.py` fails if a scenario is never called by name from a
+`test_*.py`, if a Node file is never run, or if a Python file is named so
+that discovery skips it. Any of these would otherwise "pass" by never
+running.
+
+#### Adding a test
+
+- **Behavior of an API handler or anything that touches the database:**
+  add a scenario to the feature's `*_scenarios.js` (or a new one modelled
+  on `reminder_scenarios.js`), and a `test_<scenario name>` method in its
+  `test_*.py` that runs it. A scenario the wrapper doesn't call fails
+  `test_suite_wiring.py`.
+- **A pure function** (front-end helper, crypto, date math): a case in
+  a `*_scenarios.js` or `*.test.js` next to the others for that module.
+- **Markup, wiring or docs that must stay in place:** a source check in the
+  feature's `test_*.py`. Prefer testing behavior when you can: a regex
+  passes whether or not the code works (see the case study below).
+- PGlite-backed classes are `@unittest.skipUnless(PGLITE.is_dir(), ...)`,
+  so run `npm ci` first or they skip.
 
 **`tests/sit/`**: System Integration Tests. `test_production.py` drives the
 real, deployed Cardlake API over HTTPS, which talks to the real Postgres
