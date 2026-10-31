@@ -1665,18 +1665,20 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
             self.assertNotIn("#7559d9", source(path).lower(), path.name)
 
     def test_connect_ai_starts_with_a_choice_of_assistant(self):
-        # Claude comes first, then ChatGPT, then the small link for tokens.
-        # Both assistants are added by this Cardlake's own address, shown with
+        # Claude comes first, then ChatGPT and Gemini, then the small link for
+        # tokens. All three assistants are added by this Cardlake's own address, shown with
         # their steps; nothing points at a directory listing.
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
         self.assertIn('<button type="button" class="cardle-connect-pick" data-pick="claude">', modal)
         self.assertLess(modal.index('data-pick="claude"'), modal.index('data-pick="chatgpt"'))
-        self.assertLess(modal.index('data-pick="chatgpt"'), modal.index('data-pick="token"'))
+        self.assertLess(modal.index('data-pick="chatgpt"'), modal.index('data-pick="gemini"'))
+        self.assertLess(modal.index('data-pick="gemini"'), modal.index('data-pick="token"'))
         self.assertIn("function openApiTokensModal(opener, view = 'pick') {", js)
         self.assertIn("<code data-server-address>${escapeHtml(SERVER_ADDRESS)}</code>", modal)
         self.assertIn('<div data-connect-view="claude" hidden>${addressHtml}', modal)
         self.assertIn('<div data-connect-view="chatgpt" hidden>${addressHtml}', modal)
+        self.assertIn('<div data-connect-view="gemini" hidden>${addressHtml}', modal)
         self.assertNotIn("claude.ai/directory", modal)
         self.assertIn("modal.querySelectorAll('.cardle-token-address').forEach(row => wireCopy(row.querySelector('[data-copy-server]'), row.querySelector('[data-server-address]')));", modal)
 
@@ -1684,7 +1686,7 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
         markup = modal[modal.index("modal.innerHTML = `"):modal.index("document.body.appendChild(modal);")]
-        view_names = ("pick", "claude", "chatgpt", "token")
+        view_names = ("pick", "claude", "chatgpt", "gemini", "token")
         start = modal.index("const showView = (view, focus) => {")
         functions = modal[start:modal.index("    showView(view, ", start)]
         script = r"""
@@ -1693,7 +1695,7 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
           const make = attrs => ({ hidden: false, dataset: {}, focused: 0, focus() { this.focused += 1; }, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; }, querySelector: () => null, ...attrs });
           const firsts = {};
           const views = Object.fromEntries(VIEWS.map(name => [name, make({ dataset: { connectView: name }, querySelector: () => (firsts[name] = firsts[name] || make({})) })]));
-          const picks = ['claude', 'chatgpt', 'token'].map(name => make({ dataset: { pick: name } }));
+          const picks = ['claude', 'chatgpt', 'gemini', 'token'].map(name => make({ dataset: { pick: name } }));
           const back = make({}), progress = make({});
           const modal = {
             querySelectorAll: selector => (selector === '[data-connect-view]' ? Object.values(views) : selector === '[data-pick]' ? picks : []),
@@ -1720,6 +1722,9 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
           assert.deepEqual(visible(), ['chatgpt']);
           assert.equal(progress.hidden, false);
           picks[2].listeners.click();
+          assert.deepEqual(visible(), ['gemini'], 'Gemini is pasted in like ChatGPT');
+          assert.equal(progress.hidden, false, 'Gemini shows the waiting status');
+          picks[3].listeners.click();
           assert.deepEqual(visible(), ['token']);
           assert.equal(progress.hidden, true, 'tokens have nothing to wait for');
         """.replace("VIEWS", json.dumps(list(view_names))).replace("FUNCTIONS", json.dumps(functions))
@@ -1732,6 +1737,7 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         # the setup guide; example questions wait for the connection.
         self.assertIn("${stepsHtml('claude')}", markup)
         self.assertIn("${stepsHtml('chatgpt')}", markup)
+        self.assertIn("${stepsHtml('gemini')}", markup)
         self.assertIn('<div data-connect-prompts hidden><h4>Now try asking</h4>', markup)
         self.assertLess(markup.index('data-connect-view="token" hidden'), markup.index('class="cardle-token-new"'))
         self.assertLess(markup.index('class="cardle-token-new"'), markup.index("Advanced: sync token"))

@@ -17,6 +17,9 @@ const CLAUDE_CLIENT_ID = 'https://claude.ai/oauth/mcp-oauth-client-metadata';
 const CLAUDE_REDIRECT_URI = 'https://claude.ai/api/mcp/auth_callback';
 const CODEX_SHARED_CLIENT_ID = 'https://chatgpt.com/oauth/codex/client.json';
 const CLAUDE_CODE_CLIENT_ID = 'https://claude.ai/oauth/claude-code-client-metadata';
+// Gemini has no client-id metadata document, so registration (below) gives it
+// this id. Someone can also type it into Gemini's Client ID box by hand.
+const GEMINI_CLIENT_ID = 'cardlake-gemini';
 const KNOWN_CLIENTS = new Map([
   [CHATGPT_CLIENT_ID, CHATGPT_REDIRECT_URI],
   [CLAUDE_CLIENT_ID, CLAUDE_REDIRECT_URI],
@@ -76,12 +79,45 @@ function isClaudeCodeClient(clientId, redirectUri) {
   }
 }
 
+// Gemini gives each person their own callback on Google's OAuth redirect host,
+// named after their Google account and the server's host with its dots as
+// underscores (cardlake.example becomes cardlake_example). Other Google
+// products put a Cloud project id under /r/, and those can't contain
+// underscores, so only Gemini can own a path of this shape. Only callbacks
+// named after this deployment's own host are accepted; how Gemini writes a
+// hyphen in a host isn't documented, so both forms count.
+const GEMINI_HOSTS = (() => {
+  const host = new URL(ORIGIN).hostname.toLowerCase();
+  return new Set([host.replace(/\./g, '_'), host.replace(/[^a-z0-9]/g, '_')]);
+})();
+function isGeminiRedirect(redirectUri) {
+  const match = /^https:\/\/oauth-redirect\.googleusercontent\.com\/r\/user_bound_custom-mcp-\d{1,40}-([a-z0-9_-]{1,253})$/.exec(String(redirectUri));
+  return Boolean(match) && GEMINI_HOSTS.has(match[1]);
+}
+
+function isGeminiClient(clientId, redirectUri) {
+  return clientId === GEMINI_CLIENT_ID && isGeminiRedirect(redirectUri);
+}
+
+// Dynamic client registration (RFC 7591), which Gemini needs. It never admits
+// a new app: it hands out a fixed id for redirect URIs Cardlake already
+// trusts and refuses anything else, so nothing is stored. Claude and ChatGPT
+// get their usual ids should they ever register this way instead.
+function registerClient(metadata) {
+  const redirectUris = Array.isArray(metadata?.redirect_uris) ? metadata.redirect_uris.map(String) : [];
+  const ids = new Set(redirectUris.map(uri => (isGeminiRedirect(uri) ? GEMINI_CLIENT_ID : [...KNOWN_CLIENTS].find(([, known]) => known === uri)?.[0])));
+  if (!redirectUris.length || ids.has(undefined) || ids.size !== 1) throw Object.assign(new Error('Cardlake does not accept this redirect URI'), { oauth: 'invalid_redirect_uri' });
+  const [clientId] = ids;
+  return { client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000), client_name: clientDisplayName(clientId), redirect_uris: redirectUris, token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] };
+}
+
 // What the consent page calls the app asking for access. Derived only from the
 // client ids accepted above, never from anything the request supplies.
 function clientDisplayName(clientId) {
   if (clientId === CLAUDE_CODE_CLIENT_ID) return 'Claude Code';
   if (clientId === CLAUDE_CLIENT_ID) return 'Claude';
   if (clientId === CHATGPT_CLIENT_ID) return 'ChatGPT';
+  if (clientId === GEMINI_CLIENT_ID) return 'Gemini';
   if (clientId.startsWith('https://chatgpt.com/oauth/codex/')) return 'Codex';
   return 'your AI assistant';
 }
@@ -116,7 +152,7 @@ function validateAuthorizationRequest(query, req) {
   const resource = String(query.resource || '');
   const challenge = String(query.code_challenge || '');
   if (query.response_type !== 'code') throw Object.assign(new Error('Only response_type=code is supported'), { oauth: 'unsupported_response_type' });
-  if (KNOWN_CLIENTS.get(clientId) !== redirectUri && !isCodexCimdClient(clientId, redirectUri) && !isCodexSharedClient(clientId, redirectUri) && !isClaudeCodeClient(clientId, redirectUri)) throw Object.assign(new Error('Unrecognized OAuth client'), { oauth: 'invalid_client' });
+  if (KNOWN_CLIENTS.get(clientId) !== redirectUri && !isCodexCimdClient(clientId, redirectUri) && !isCodexSharedClient(clientId, redirectUri) && !isClaudeCodeClient(clientId, redirectUri) && !isGeminiClient(clientId, redirectUri)) throw Object.assign(new Error('Unrecognized OAuth client'), { oauth: 'invalid_client' });
   if (resource !== resourceFor(req)) throw Object.assign(new Error('Invalid resource'), { oauth: 'invalid_target' });
   if (query.code_challenge_method !== 'S256' || !/^[A-Za-z0-9_-]{43,128}$/.test(challenge)) throw Object.assign(new Error('PKCE S256 is required'), { oauth: 'invalid_request' });
   const scopes = normalizeScopes(query.scope);
@@ -151,9 +187,9 @@ function createTransaction(request) { return encode({ ...request, exp: Math.floo
 function readTransaction(req) { const value = decode(readCookie(req, 'cardle_oauth_tx')); return value?.exp > Math.floor(Date.now() / 1000) ? value : null; }
 function authorizationMetadata(req) {
   const origin = originFor(req);
-  return { issuer: origin, authorization_response_iss_parameter_supported: true, authorization_endpoint: `${origin}/oauth/authorize`, token_endpoint: `${origin}/oauth/token`, client_id_metadata_document_supported: true, token_endpoint_auth_methods_supported: ['none'], response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], scopes_supported: SCOPES };
+  return { issuer: origin, authorization_response_iss_parameter_supported: true, authorization_endpoint: `${origin}/oauth/authorize`, token_endpoint: `${origin}/oauth/token`, registration_endpoint: `${origin}/oauth/register`, client_id_metadata_document_supported: true, token_endpoint_auth_methods_supported: ['none'], response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], scopes_supported: SCOPES };
 }
 function protectedResourceMetadata(req) { const origin = originFor(req); return { resource: `${origin}/api/mcp`, authorization_servers: [origin], scopes_supported: SCOPES, resource_documentation: `${origin}/mcp-setup.html` }; }
 function authChallenge(req) { return `Bearer resource_metadata="${originFor(req)}/.well-known/oauth-protected-resource", scope="cardle.read cardle.write"`; }
 
-module.exports = { ACCESS_TTL_SECONDS, CHATGPT_CLIENT_ID, CHATGPT_REDIRECT_URI, CLAUDE_CLIENT_ID, CLAUDE_CODE_CLIENT_ID, CLAUDE_REDIRECT_URI, CODEX_SHARED_CLIENT_ID, ISSUER, ORIGIN, REFRESH_TTL_SECONDS, RESOURCE, SCOPES, authChallenge, authorizationMetadata, clientDisplayName, createAccessToken, createTransaction, hashToken: value => crypto.createHash('sha256').update(value).digest('hex'), isClaudeCodeClient, isCodexCimdClient, isCodexSharedClient, normalizeScopes, originFor, protectedResourceMetadata, readTransaction, resolveOAuthAuthorization, resolveOAuthTenant, transactionCookie, validateAuthorizationRequest, verifyPkce };
+module.exports = { ACCESS_TTL_SECONDS, CHATGPT_CLIENT_ID, CHATGPT_REDIRECT_URI, CLAUDE_CLIENT_ID, CLAUDE_CODE_CLIENT_ID, CLAUDE_REDIRECT_URI, CODEX_SHARED_CLIENT_ID, GEMINI_CLIENT_ID, ISSUER, ORIGIN, REFRESH_TTL_SECONDS, RESOURCE, SCOPES, authChallenge, authorizationMetadata, clientDisplayName, createAccessToken, createTransaction, hashToken: value => crypto.createHash('sha256').update(value).digest('hex'), isClaudeCodeClient, isCodexCimdClient, isCodexSharedClient, isGeminiClient, normalizeScopes, originFor, protectedResourceMetadata, readTransaction, registerClient, resolveOAuthAuthorization, resolveOAuthTenant, transactionCookie, validateAuthorizationRequest, verifyPkce };

@@ -78,7 +78,7 @@ npm run test:full
 The SIT tier reads the same `SYNC_TOKEN` the target deployment checks, under
 the same name. A deployment that generated its own (`docs/ENVIRONMENT.md`,
 "Generated secrets") shows it to the owner under **Connect AI**, **Claude
-Code, Gemini or a script?**, **Advanced: sync token**. Pass both for the one command,
+Code or a script?**, **Advanced: sync token**. Pass both for the one command,
 without echoing the token into your shell history (read it from wherever you
 keep it):
 

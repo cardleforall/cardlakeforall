@@ -137,6 +137,7 @@ class ConnectAiContentTests(unittest.TestCase):
         self.assertLess(index.index("/vault/assets/connect-ai.js"), index.index("/vault/assets/vault.js"))
         self.assertIn("data-connect-ai-steps=\"claude\"", source(MCP_SETUP))
         self.assertIn("data-connect-ai-steps=\"chatgpt\"", source(MCP_SETUP))
+        self.assertIn("data-connect-ai-steps=\"gemini\"", source(MCP_SETUP))
         self.assertIn("window.CardleConnectAI.SERVER_ADDRESS", source(VAULT_JS))
 
     def test_every_page_gives_this_deployments_own_address(self):

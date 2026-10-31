@@ -1,4 +1,4 @@
-"""Contract tests for MCP OAuth discovery and PKCE (ChatGPT, Claude, Claude Code, Codex)."""
+"""Contract tests for MCP OAuth discovery and PKCE (ChatGPT, Claude, Claude Code, Codex, Gemini)."""
 from pathlib import Path
 import json
 import re
@@ -16,6 +16,7 @@ class McpOAuthTests(unittest.TestCase):
         self.assertEqual(routes['/.well-known/oauth-authorization-server'], '/api/auth?action=oauth-metadata')
         self.assertEqual(routes['/oauth/authorize'], '/api/oauth?action=authorize')
         self.assertEqual(routes['/oauth/token'], '/api/oauth?action=token')
+        self.assertEqual(routes['/oauth/register'], '/api/oauth?action=register')
         self.assertIn('oauth_authorization_codes', (ROOT / 'schema-v2.sql').read_text(encoding='utf-8'))
         self.assertIn('oauth_refresh_tokens', (ROOT / 'schema-v2.sql').read_text(encoding='utf-8'))
         mcp = (ROOT / 'api/mcp.js').read_text(encoding='utf-8')
@@ -113,6 +114,116 @@ const elsewhere = oauth.createAccessToken('alice@example.test', ['cardle.read'],
 assert(oauth.resolveOAuthTenant(on('notes.example', elsewhere)) === null, 'a token for another server');
 '''
         result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_gemini_registers_itself_but_registration_admits_no_new_app(self):
+        # Gemini can't use client-id metadata documents, so it registers.
+        # Registration only names clients Cardlake already trusts, and only
+        # Gemini callbacks named after this deployment's own host.
+        script = r'''
+process.env.SESSION_SECRET = 'test-secret';
+process.env.CARDLE_PUBLIC_ORIGIN = 'https://notes.example';
+const crypto = require('crypto');
+const oauth = require('./api/_lib/oauth');
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const gemini = 'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-108197236448847442911-notes_example';
+assert(oauth.authorizationMetadata().registration_endpoint === 'https://notes.example/oauth/register', 'metadata must advertise registration');
+const registered = oauth.registerClient({ redirect_uris: [gemini], client_name: 'Gemini', token_endpoint_auth_method: 'client_secret_basic' });
+assert(registered.client_id === oauth.GEMINI_CLIENT_ID, 'Gemini got the wrong client id');
+assert(registered.token_endpoint_auth_method === 'none' && !('client_secret' in registered), 'registration issued a secret');
+const challenge = crypto.createHash('sha256').update('a'.repeat(43)).digest('base64url');
+const request = oauth.validateAuthorizationRequest({
+  response_type: 'code', client_id: registered.client_id, redirect_uri: gemini, resource: oauth.RESOURCE,
+  code_challenge: challenge, code_challenge_method: 'S256', scope: 'cardle.read cardle.write',
+});
+assert(request.clientId === oauth.GEMINI_CLIENT_ID, 'Gemini authorization was rejected');
+assert(oauth.clientDisplayName(oauth.GEMINI_CLIENT_ID) === 'Gemini', 'wrong consent name for Gemini');
+for (const uri of [
+  'https://oauth-redirect.googleusercontent.com/r/my-gcp-project',
+  gemini.replace('notes_example', 'other_example'),
+  'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-1081972-evil_example',
+  `${gemini}?next=https://evil.example`, `${gemini}/more`, gemini.replace('https:', 'http:'),
+  gemini.replace('oauth-redirect.googleusercontent.com', 'oauth-redirect.googleusercontent.com.evil.example'),
+  'https://evil.example/callback',
+]) {
+  assert(!oauth.isGeminiClient(oauth.GEMINI_CLIENT_ID, uri), `Gemini accepted ${uri}`);
+  let refused = false;
+  try { oauth.registerClient({ redirect_uris: [uri] }); } catch (error) { refused = error.oauth === 'invalid_redirect_uri'; }
+  assert(refused, `registration accepted ${uri}`);
+}
+assert(!oauth.isGeminiClient(oauth.CLAUDE_CLIENT_ID, gemini), 'another client id accepted for a Gemini callback');
+for (const metadata of [{}, { redirect_uris: [] }, { redirect_uris: 'x' }, { redirect_uris: [gemini, oauth.CLAUDE_REDIRECT_URI] }, { redirect_uris: [gemini, 'https://evil.example/cb'] }]) {
+  let refused = false;
+  try { oauth.registerClient(metadata); } catch (error) { refused = error.oauth === 'invalid_redirect_uri'; }
+  assert(refused, `registration accepted ${JSON.stringify(metadata)}`);
+}
+// Should Claude or ChatGPT ever register instead of using their metadata
+// documents, they keep the ids the rest of the flow expects.
+assert(oauth.registerClient({ redirect_uris: [oauth.CLAUDE_REDIRECT_URI] }).client_id === oauth.CLAUDE_CLIENT_ID, 'Claude registration');
+assert(oauth.registerClient({ redirect_uris: [oauth.CHATGPT_REDIRECT_URI] }).client_id === oauth.CHATGPT_CLIENT_ID, 'ChatGPT registration');
+'''
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_a_gemini_callback_names_this_deployments_host_with_or_without_hyphens(self):
+        # Gemini writes the host's dots as underscores; how it writes a hyphen
+        # isn't documented, so a Vercel address is accepted either way.
+        script = r'''
+process.env.CARDLE_PUBLIC_ORIGIN = 'https://my-cardlake.vercel.app';
+const oauth = require('./api/_lib/oauth');
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const callback = host => `https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-42-${host}`;
+assert(oauth.isGeminiClient(oauth.GEMINI_CLIENT_ID, callback('my-cardlake_vercel_app')), 'hyphen kept');
+assert(oauth.isGeminiClient(oauth.GEMINI_CLIENT_ID, callback('my_cardlake_vercel_app')), 'hyphen as underscore');
+assert(!oauth.isGeminiClient(oauth.GEMINI_CLIENT_ID, callback('your-cardlake_vercel_app')), 'another deployment');
+assert(!oauth.isGeminiClient(oauth.GEMINI_CLIENT_ID, callback('my-cardlake_vercel_app_evil')), 'a longer host');
+'''
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_register_endpoint_and_token_exchange_with_basic_client_auth(self):
+        # Gemini may name itself with HTTP Basic at the token endpoint rather
+        # than client_id in the body; the secret it sends is ignored.
+        script = r'''
+process.env.SESSION_SECRET = 'test-secret';
+process.env.CARDLE_PUBLIC_ORIGIN = 'https://notes.example';
+const crypto = require('crypto');
+const { createTestDb } = require('./tests/unit/pg_harness');
+const db = require('./api/_lib/db');
+const oauthLib = require('./api/_lib/oauth');
+const gemini = 'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-42-notes_example';
+const verifier = 'v'.repeat(43);
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+(async () => {
+  const { sql } = await createTestDb();
+  db.getSql = () => sql;
+  require('./tests/unit/pg_harness').allowAccounts('alice@example.test');
+  const handler = require('./api/oauth');
+  const call = req => new Promise(resolve => {
+    const res = { headers: {}, statusCode: 200, setHeader(k, v) { this.headers[k] = v; }, getHeader(k) { return this.headers[k]; }, status(code) { this.statusCode = code; return this; }, json(body) { resolve({ status: this.statusCode, body }); return this; }, send(body) { resolve({ status: this.statusCode, body }); return this; }, end() { resolve({ status: this.statusCode }); return this; } };
+    handler({ headers: {}, ...req }, res);
+  });
+  const newCode = async () => {
+    const code = crypto.randomBytes(16).toString('hex');
+    await sql`insert into oauth_authorization_codes (code_hash, user_email, client_id, redirect_uri, resource, scope, code_challenge, expires_at)
+      values (${oauthLib.hashToken(code)}, 'alice@example.test', ${oauthLib.GEMINI_CLIENT_ID}, ${gemini}, ${oauthLib.RESOURCE}, 'cardle.read cardle.write', ${crypto.createHash('sha256').update(verifier).digest('base64url')}, now() + interval '5 minutes')`;
+    return code;
+  };
+  const ok = await call({ method: 'POST', query: { action: 'register' }, body: { redirect_uris: [gemini] } });
+  assert(ok.status === 201 && ok.body.client_id === oauthLib.GEMINI_CLIENT_ID, `register: ${JSON.stringify(ok)}`);
+  const bad = await call({ method: 'POST', query: { action: 'register' }, body: { redirect_uris: ['https://evil.example/cb'] } });
+  assert(bad.status === 400 && bad.body.error === 'invalid_redirect_uri', `bad register: ${JSON.stringify(bad)}`);
+  const form = async () => ({ grant_type: 'authorization_code', code: await newCode(), redirect_uri: gemini, resource: oauthLib.RESOURCE, code_verifier: verifier });
+  const basic = 'Basic ' + Buffer.from(`${oauthLib.GEMINI_CLIENT_ID}:anything`).toString('base64');
+  const tokens = await call({ method: 'POST', query: { action: 'token' }, headers: { authorization: basic }, body: await form() });
+  assert(tokens.status === 200 && tokens.body.access_token, `basic token: ${JSON.stringify(tokens)}`);
+  const other = 'Basic ' + Buffer.from(`${oauthLib.CLAUDE_CLIENT_ID}:x`).toString('base64');
+  const wrong = await call({ method: 'POST', query: { action: 'token' }, headers: { authorization: other }, body: await form() });
+  assert(wrong.status === 400 && wrong.body.error === 'invalid_grant', `wrong client: ${JSON.stringify(wrong)}`);
+  process.exit(0);
+})().catch(error => { console.error(error); process.exit(1); });
+'''
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_consent_page_names_the_connecting_app_not_a_fixed_one(self):
