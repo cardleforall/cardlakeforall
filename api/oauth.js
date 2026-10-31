@@ -176,6 +176,13 @@ async function token(req, res) {
 }
 async function register(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  try { return res.status(201).json(oauth.registerClient(await readJson(req))); } catch (error) { return res.status(400).json({ error: error.oauth || 'invalid_client_metadata', error_description: error.message }); }
+  let metadata;
+  try { metadata = await readJson(req); return res.status(201).json(oauth.registerClient(metadata)); } catch (error) {
+    // A refused registration is an assistant we don't support yet (or a new
+    // callback shape from one we do), so log what it asked for. Long digit
+    // runs, such as Google account ids, are masked.
+    console.warn('oauth.register refused', JSON.stringify({ redirect_uris: metadata?.redirect_uris, client_name: metadata?.client_name, keys: Object.keys(metadata || {}) }).replace(/\d{6,}/g, 'N').slice(0, 1000));
+    return res.status(400).json({ error: error.oauth || 'invalid_client_metadata', error_description: error.message });
+  }
 }
 module.exports = withSessionGuard(async function handler(req, res) { const action = req.query?.action; if (action === 'authorize') return authorize(req, res); if (action === 'token') return token(req, res); if (action === 'register') return register(req, res); return res.status(404).json({ error: 'Not found' }); });

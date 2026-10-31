@@ -745,7 +745,9 @@ ChatGPT, Codex).
   where `<host>` is this deployment's host with its dots as underscores).
 - **Registration** (`POST /oauth/register`, RFC 7591): Gemini needs it. It
   returns a fixed client id for those trusted redirect URIs and refuses any
-  other, storing nothing, so it is not open dynamic registration.
+  other, storing nothing, so it is not open dynamic registration. A refused
+  registration is logged (`oauth.register refused`, long digit runs masked),
+  so a new callback shape shows up in the deployment's logs.
 - **Authorize (GET)**: validate `response_type=code`, client/redirect pair,
   `resource`, PKCE `S256` challenge, scopes ⊆ `cardle.read cardle.write`;
   store the request in a signed, `HttpOnly`, `Path=/oauth` transaction cookie

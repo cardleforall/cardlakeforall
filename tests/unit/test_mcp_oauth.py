@@ -211,8 +211,14 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
   };
   const ok = await call({ method: 'POST', query: { action: 'register' }, body: { redirect_uris: [gemini] } });
   assert(ok.status === 201 && ok.body.client_id === oauthLib.GEMINI_CLIENT_ID, `register: ${JSON.stringify(ok)}`);
-  const bad = await call({ method: 'POST', query: { action: 'register' }, body: { redirect_uris: ['https://evil.example/cb'] } });
+  const warned = [];
+  console.warn = (...args) => warned.push(args.join(' '));
+  const bad = await call({ method: 'POST', query: { action: 'register' }, body: { redirect_uris: ['https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-108197236448847442911-elsewhere'], client_name: 'Google' } });
   assert(bad.status === 400 && bad.body.error === 'invalid_redirect_uri', `bad register: ${JSON.stringify(bad)}`);
+  // A refusal is logged so a new callback shape can be supported, with the
+  // Google account id masked.
+  assert(warned.length === 1 && warned[0].startsWith('oauth.register refused') && warned[0].includes('custom-mcp-N-elsewhere') && warned[0].includes('Google'), `log: ${warned}`);
+  assert(!warned[0].includes('108197236448847442911'), 'the account id was logged');
   const form = async () => ({ grant_type: 'authorization_code', code: await newCode(), redirect_uri: gemini, resource: oauthLib.RESOURCE, code_verifier: verifier });
   const basic = 'Basic ' + Buffer.from(`${oauthLib.GEMINI_CLIENT_ID}:anything`).toString('base64');
   const tokens = await call({ method: 'POST', query: { action: 'token' }, headers: { authorization: basic }, body: await form() });
