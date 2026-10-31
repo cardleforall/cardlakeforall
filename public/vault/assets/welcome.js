@@ -13,7 +13,8 @@
   // newcomer from someone whose session lapsed, so they appear only once the
   // server has sent this account to onboarding.
   const ONBOARDING_STEPS = ['persona'];
-  const state = { personas: [], persona: null, cardCount: 0 };
+  const state = { personas: [], persona: null, cardCount: 0, selected: null };
+  const TICK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>';
 
   async function api(path, options = {}) {
     const res = await fetch(path, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
@@ -36,8 +37,10 @@
     document.querySelector(`[data-step="${step}"] h1`)?.focus();
   }
 
-  function goToFeed(justOnboarded, firstCard = false) {
-    location.replace(`/vault/index.html${justOnboarded ? '?welcome=1' : ''}${justOnboarded && firstCard ? '&capture=reminder' : ''}`);
+  // connect: the "Also connect Claude or ChatGPT" box was ticked, so the feed
+  // opens its connect steps straight away (vault.js).
+  function goToFeed(justOnboarded, { connect = false } = {}) {
+    location.replace(`/vault/index.html${justOnboarded ? '?welcome=1' : ''}${justOnboarded && connect ? '&connect=1' : ''}`);
   }
 
   // ---- step 1: sign in ------------------------------------------------------
@@ -63,9 +66,21 @@
 
   // ---- step 2: persona --------------------------------------------------------
 
+  // Clicking a feed selects it; Continue sets it up.
   function personaHtml(persona) {
     const preview = persona.preview.map(card => `<li><b>${escapeHtml(TYPE_LABELS[card.type] || card.type)}</b><span>${escapeHtml(card.title)}</span></li>`).join('');
-    return `<button type="button" class="persona" data-persona="${escapeHtml(persona.id)}"><h2>${escapeHtml(persona.name)}</h2><p class="tagline">${escapeHtml(persona.tagline)}</p><ul>${preview}</ul><span class="count" data-count>${persona.cardCount} starter cards</span></button>`;
+    const selected = persona.id === state.selected;
+    return `<button type="button" class="persona" data-persona="${escapeHtml(persona.id)}" aria-pressed="${selected}"><span class="tick">${selected ? TICK : ''}</span><h2>${escapeHtml(persona.name)}</h2><p class="tagline">${escapeHtml(persona.tagline)}</p><ul>${preview}</ul><span class="count" data-count>${persona.cardCount} starter cards</span></button>`;
+  }
+
+  function drawPersonas() {
+    $('[data-personas]').innerHTML = state.personas.map(personaHtml).join('');
+    document.querySelectorAll('[data-persona]').forEach(button => button.addEventListener('click', () => {
+      state.selected = button.dataset.persona;
+      $('[data-persona-error]').textContent = '';
+      drawPersonas();
+      document.querySelector(`[data-persona="${state.selected}"]`)?.focus();
+    }));
   }
 
   // Someone who signed up by connecting Claude or ChatGPT may arrive here with
@@ -74,21 +89,23 @@
     if (!state.cardCount) return;
     const cards = state.cardCount === 1 ? '1 card' : `${state.cardCount} cards`;
     $('[data-persona-lead]').textContent = `You already have ${cards} in Cardlake. Add a ready-made starter feed alongside them, or go straight to your feed.`;
-    $('[data-start-own-wrap]').hidden = true;
-    $('[data-start-empty-lead]').textContent = 'Happy with what you have?';
-    $('[data-start-empty]').textContent = 'Go to my feed';
+    $('[data-start-empty]').textContent = 'Or go straight to my feed';
   }
 
+  // One feed is selected at random to start with, so Continue always works
+  // and no feed is favoured by its place on the page.
   function showPersonas() {
     describeExistingCards();
-    $('[data-personas]').innerHTML = state.personas.map(personaHtml).join('');
-    document.querySelectorAll('[data-persona]').forEach(button => button.addEventListener('click', () => choosePersona(button.dataset.persona, button)));
+    if (!state.personas.some(persona => persona.id === state.selected)) {
+      state.selected = state.personas.length ? state.personas[Math.floor(Math.random() * state.personas.length)].id : null;
+    }
+    drawPersonas();
     show('persona');
   }
 
-  async function choosePersona(personaId, button, firstCard = false) {
+  async function choosePersona(personaId, button, { connect = false } = {}) {
     const error = $('[data-persona-error]');
-    const controls = [...document.querySelectorAll('[data-persona], [data-start-empty], [data-start-own]')];
+    const controls = [...document.querySelectorAll('[data-persona], [data-start-empty], [data-continue], [data-connect-after]')];
     controls.forEach(control => { control.disabled = true; });
     const count = button?.querySelector('[data-count]');
     const label = count?.innerHTML;
@@ -99,7 +116,7 @@
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       await api('/api/onboarding', { method: 'POST', body: JSON.stringify({ persona: personaId, timeZone }) });
       state.persona = personaId;
-      return goToFeed(true, firstCard);
+      return goToFeed(true, { connect });
     } catch (err) {
       if (err.code === 'ONBOARDING_UNAVAILABLE') return goToFeed(false);
       error.textContent = `Could not set up your feed: ${err.message}`;
@@ -110,8 +127,12 @@
   }
 
   function wireStartButtons() {
-    $('[data-start-empty]').addEventListener('click', () => choosePersona('empty', null));
-    $('[data-start-own]').addEventListener('click', event => choosePersona('empty', event.currentTarget, true));
+    const connect = () => ({ connect: $('[data-connect-after]').checked });
+    $('[data-continue]').addEventListener('click', () => {
+      if (!state.selected) { $('[data-persona-error]').textContent = 'Pick a starter feed first.'; return; }
+      choosePersona(state.selected, document.querySelector(`[data-persona="${state.selected}"]`), connect());
+    });
+    $('[data-start-empty]').addEventListener('click', () => choosePersona('empty', null, connect()));
   }
 
   async function start() {

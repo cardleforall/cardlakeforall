@@ -241,6 +241,17 @@
     if (status.sampleCount > 0 && !isDismissed(SAMPLE_BANNER_DISMISSED)) showSampleBanner(status.sampleCount, new URLSearchParams(location.search).get('welcome') === '1');
     // Added last so it sits above the sample banner: it's the one thing to do.
     if (status.aiConnected === false && !isDismissed(CONNECT_CARD_DISMISSED)) showConnectCard(status.personas?.find(persona => persona.id === status.persona)?.prompts);
+    if (takeConnectRequest() && status.aiConnected === false) openApiTokensModal(null);
+  }
+  // Onboarding's "Also connect Claude or ChatGPT afterwards" (welcome.js) asks
+  // for the connect steps once: the request is removed from the address so a
+  // refresh doesn't reopen them.
+  function takeConnectRequest() {
+    const url = new URL(location.href);
+    if (url.searchParams.get('welcome') !== '1' || url.searchParams.get('connect') !== '1') return false;
+    url.searchParams.delete('connect');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    return true;
   }
   function showSampleBanner(count, justOnboarded) {
     const main = document.querySelector('.main');

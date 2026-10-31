@@ -53,7 +53,18 @@
   .persona li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; line-height: 1.4; background: var(--soft); border-radius: 9px; padding: 7px 10px; }
   .persona li b { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: oklch(50% .16 260); flex-shrink: 0; }
   .persona .count { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: auto; }
-  .start-empty { text-align: center; margin: 20px 0 0; font-size: 13px; }
+  .persona { position: relative; }
+  .persona[aria-pressed="true"] { border: 2px solid oklch(58% .16 260); padding: 17px; box-shadow: 0 18px 36px -26px oklch(40% .16 260 / .7); }
+  .persona h2 { padding-right: 30px; }
+  .persona .tick { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+  .persona[aria-pressed="true"] .tick { background: oklch(58% .16 260); border-color: transparent; }
+  .choose-footer { text-align: center; margin-top: 22px; }
+  .connect-option { display: inline-flex; gap: 10px; align-items: center; text-align: left; font-size: 14px; cursor: pointer; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+  .connect-option input { width: 18px; height: 18px; accent-color: oklch(58% .16 260); }
+  .connect-option small { display: block; color: var(--muted); font-size: 12px; }
+  .choose-continue { display: block; margin: 16px auto 0; width: 280px; max-width: 100%; min-height: 46px; border: 0; border-radius: 999px; color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .choose-continue:disabled { opacity: .6; cursor: default; }
+  .start-empty { text-align: center; margin: 12px 0 0; font-size: 13px; }
   .linklike { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; font-size: inherit; }
   .linklike:hover { text-decoration: underline; }
   .btn { border: 0; border-radius: 11px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
@@ -92,19 +103,20 @@
   <section class="step" data-step="persona" hidden>
     <div class="intro">
       <span class="eyebrow">Step 2 of 3</span>
-      <h1 tabindex="-1">Make this feed yours</h1>
-      <p data-persona-lead>Start with something you want to remember, or choose a ready-made feed below. You can connect Claude or ChatGPT from your feed.</p>
-    </div>
-    <div class="intro" data-start-own-wrap>
-      <button type="button" class="btn welcome-signin-btn" data-start-own>Save your first reminder</button>
+      <h1 tabindex="-1">Choose your starter feed</h1>
+      <p data-persona-lead>Pick the one closest to you. You can delete the starter cards any time.</p>
     </div>
     <div class="personas" data-personas></div>
-    <p class="error" data-persona-error aria-live="polite" style="text-align: center;"></p>
-    <p class="start-empty"><span data-start-empty-lead>Rather start from scratch?</span> <button type="button" class="linklike" data-start-empty>Start with an empty feed</button><br>Either way, tap <strong>Deal me 5</strong> in your feed any time for fresh videos and ideas.</p>
+    <div class="choose-footer">
+      <label class="connect-option"><input type="checkbox" data-connect-after><span>Also connect Claude or ChatGPT afterwards<small>Optional. Save cards straight from your chats.</small></span></label>
+      <button type="button" class="choose-continue grad-bg" data-continue>Continue</button>
+      <p class="error" data-persona-error aria-live="polite"></p>
+      <p class="start-empty"><button type="button" class="linklike" data-start-empty>Or start with an empty feed</button><br>Tap <strong>Deal me 5</strong> in your feed any time for fresh videos and ideas.</p>
+    </div>
   </section>
 
 </main>
 
-<script src="/vault/assets/welcome.js?v=4"></script>
+<script src="/vault/assets/welcome.js?v=5"></script>
 </body>
 </html>

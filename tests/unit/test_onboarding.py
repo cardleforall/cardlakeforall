@@ -193,16 +193,86 @@ class OnboardingWiringTests(unittest.TestCase):
             assert.equal(requests.at(-1).persona, 'ai-builder');
             assert.equal(redirects.at(-1), '/vault/index.html?welcome=1');
             fail = true;
-            await context.choosePersona('empty', button, true);
+            await context.choosePersona('empty', button, { connect: true });
             assert.equal(redirects.length, 1);
             assert.ok(controls.every(control => !control.disabled));
             assert.match(error.textContent, /Try again/);
             fail = false;
-            await context.choosePersona('empty', button, true);
+            // "Also connect Claude or ChatGPT afterwards" asks the feed to
+            // open its connect steps.
+            await context.choosePersona('empty', button, { connect: true });
             assert.equal(requests.at(-1).persona, 'empty');
-            assert.equal(redirects.at(-1), '/vault/index.html?welcome=1&capture=reminder');
+            assert.equal(redirects.at(-1), '/vault/index.html?welcome=1&connect=1');
           })().catch(error => { console.error(error); process.exitCode = 1; });
         '''.replace("FUNCTIONS", json.dumps(functions))
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    # The starter feed screen: one feed is selected at random, clicking a feed
+    # only selects it, and Continue sets up whichever is selected.
+    def test_starter_feed_screen_selects_one_and_continues_with_it(self):
+        html = source(WELCOME)
+        persona_step = html.split('data-step="persona"', 1)[1].split("</section>", 1)[0]
+        self.assertIn('<h1 tabindex="-1">Choose your starter feed</h1>', persona_step)
+        self.assertIn('<input type="checkbox" data-connect-after>', persona_step)
+        self.assertIn("Also connect Claude or ChatGPT afterwards", persona_step)
+        self.assertIn('data-continue>Continue</button>', persona_step)
+        self.assertIn('data-start-empty>Or start with an empty feed</button>', persona_step)
+        self.assertNotIn("Save your first reminder", html)
+        self.assertNotIn('data-connect-after checked', html, "connecting is never the default")
+        js = source(WELCOME_JS)
+        functions = js[js.index("  function personaHtml("):js.index("  async function choosePersona(")]
+        script = r'''
+          const assert = require('node:assert/strict');
+          const vm = require('node:vm');
+          const personas = ['a', 'b', 'c', 'd'].map(id => ({ id, name: id, tagline: '', preview: [], cardCount: 3 }));
+          const grid = { innerHTML: '' }, error = { textContent: 'old' }, lead = { textContent: '' };
+          const context = {
+            state: { personas, cardCount: 0, selected: null }, TICK: '<svg></svg>', TYPE_LABELS: {}, Math,
+            escapeHtml: value => String(value), show: () => {},
+            $: selector => (selector === '[data-personas]' ? grid : selector === '[data-persona-error]' ? error : lead),
+            document: { querySelectorAll: () => [], querySelector: () => null },
+          };
+          vm.createContext(context);
+          vm.runInContext(FUNCTIONS, context);
+          const picked = new Set();
+          for (let i = 0; i < 200; i += 1) { context.state.selected = null; context.showPersonas(); picked.add(context.state.selected); }
+          assert.deepEqual([...picked].sort(), ['a', 'b', 'c', 'd'], 'any of the four can be pre-selected');
+          context.state.selected = 'c';
+          context.showPersonas();
+          assert.equal(context.state.selected, 'c', 'a choice already made is kept');
+          assert.equal((grid.innerHTML.match(/aria-pressed="true"/g) || []).length, 1, 'exactly one shows as selected');
+          assert.match(grid.innerHTML, /data-persona="c" aria-pressed="true"/);
+        '''.replace("FUNCTIONS", json.dumps(functions))
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        wiring = js[js.index("  function wireStartButtons() {"):js.index("  async function start() {")]
+        self.assertIn("choosePersona(state.selected, document.querySelector(`[data-persona=\"${state.selected}\"]`), connect());", wiring)
+        self.assertIn("if (!state.selected) { $('[data-persona-error]').textContent = 'Pick a starter feed first.'; return; }", wiring)
+
+    # Ticking the box opens the feed's connect steps once, for someone not
+    # yet connected; a refresh doesn't reopen them.
+    def test_the_feed_opens_connect_steps_once_when_asked(self):
+        vault = source(VAULT_JS)
+        self.assertIn("if (takeConnectRequest() && status.aiConnected === false) openApiTokensModal(null);", vault)
+        function = vault[vault.index("  function takeConnectRequest() {"):vault.index("  function showSampleBanner(")]
+        script = r'''
+          const assert = require('node:assert/strict');
+          const vm = require('node:vm');
+          for (const [query, expected] of [
+            ['?welcome=1&connect=1&other=keep#overview', true],
+            ['?connect=1', false],
+            ['?welcome=1', false],
+          ]) {
+            const location = { href: 'http://localhost/vault/index.html' + query };
+            const context = { URL, location, history: { state: null, replaceState(state, title, url) { location.href = 'http://localhost' + url; } } };
+            vm.createContext(context);
+            vm.runInContext(FUNCTION, context);
+            assert.equal(context.takeConnectRequest(), expected, query);
+            assert.equal(context.takeConnectRequest(), false, 'only once');
+            if (expected) assert.equal(location.href, 'http://localhost/vault/index.html?welcome=1&other=keep#overview');
+          }
+        '''.replace("FUNCTION", json.dumps(function))
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -320,18 +390,21 @@ class FeedConnectCardTests(unittest.TestCase):
         script = r'''
           const assert = require('node:assert/strict');
           const vm = require('node:vm');
-          const run = async (status, stored = {}, storageBlocked = false) => {
-            const shown = [], redirects = [];
+          const run = async (status, stored = {}, storageBlocked = false, query = '') => {
+            const shown = [], redirects = [], opened = [];
             const context = {
-              URLSearchParams, location: { search: '', replace: url => redirects.push(url) },
+              URL, URLSearchParams,
+              location: { search: query, href: 'http://localhost/vault/index.html' + query, replace: url => redirects.push(url) },
+              history: { state: null, replaceState() {} },
               localStorage: { getItem: key => { if (storageBlocked) throw new Error('blocked'); return stored[key] ?? null; } },
               api: async () => status,
               showSampleBanner() {}, showConnectCard: prompts => shown.push(prompts),
+              openApiTokensModal: opener => opened.push(opener),
             };
             vm.createContext(context);
             vm.runInContext(FUNCTIONS, context);
             await context.followOnboarding();
-            return { shown, redirects };
+            return { shown, redirects, opened };
           };
           const personas = [{ id: 'ai-builder', prompts: ['Which videos have I saved about evals?'] }];
           (async () => {
@@ -347,6 +420,11 @@ class FeedConnectCardTests(unittest.TestCase):
             result = await run({ needsOnboarding: true, aiConnected: false });
             assert.deepEqual(result.redirects, ['/welcome.html']);
             assert.deepEqual(result.shown, []);
+            // Ticked "Also connect" on the starter feed screen: the connect
+            // steps open, unless an assistant is already connected.
+            assert.equal((await run({ aiConnected: false }, {}, false, '?welcome=1&connect=1')).opened.length, 1);
+            assert.equal((await run({ aiConnected: true }, {}, false, '?welcome=1&connect=1')).opened.length, 0);
+            assert.equal((await run({ aiConnected: false })).opened.length, 0);
           })().catch(error => { console.error(error); process.exitCode = 1; });
         '''.replace("FUNCTIONS", json.dumps(functions))
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)

@@ -325,8 +325,14 @@ A brand-new account with no cards is sent to `/welcome.html` after sign-in.
 
 **Step 1: Sign in** ("Everything between your calendar and your to-do list").
 
-**Step 2: Pick a starter feed** ("What does your week look like?"). Four
-personas, each with 14–15 realistic starter cards, plus "Start empty":
+**Step 2: Choose your starter feed.** Four personas, each with 14–15
+realistic starter cards, plus "Or start with an empty feed". One of the four
+is selected at random to begin with, so no feed is favoured by its place on
+the page; clicking a feed selects it, and **Continue** sets up the selected
+one. An unticked box, "Also connect Claude or ChatGPT afterwards", opens the
+feed's Connect AI steps once on arrival (`?connect=1`, which the feed reads
+and removes so a refresh doesn't reopen them), unless an assistant is already
+connected:
 
 | Persona | Tagline | Mix |
 |---|---|---|
@@ -371,8 +377,8 @@ Claude"), which lists what the assistant will be able to do and signs in with
 the owner's password. They may save cards from the assistant before ever
 opening the vault, so the owner is offered the starter-feed step on their
 first visit even if they already have cards. The step
-then says "You already have N cards", offers "Go to my feed" instead of
-"Start with an empty feed". The feed shows no connect card, since the
+then says "You already have N cards", and offers "Or go straight to my feed"
+instead of "Or start with an empty feed". The feed shows no connect card, since the
 assistant is already connected.
 
 ---
