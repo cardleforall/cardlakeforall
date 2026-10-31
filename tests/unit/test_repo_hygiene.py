@@ -30,6 +30,16 @@ class RepoHygieneTests(unittest.TestCase):
             '.coverage', 'htmlcov/', 'tmp/', 'dist/', 'Vault Dashboard.html',
         }.issubset(entries))
 
+    def test_every_browser_script_parses(self):
+        # One syntax error stops a whole page: an unescaped apostrophe in a
+        # single-quoted string is enough. Source-text tests can't see that, so
+        # every script the browser loads is parsed.
+        scripts = sorted((ROOT / 'public').rglob('*.js'))
+        self.assertTrue(any(path.name == 'vault.js' for path in scripts))
+        for path in scripts:
+            result = subprocess.run(['node', '--check', str(path)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, f'{path.relative_to(ROOT)} does not parse:\n{result.stderr}')
+
     def test_package_scripts_are_ci_safe(self):
         package = json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))
         scripts = package['scripts']

@@ -48,4 +48,4 @@ const scenarios = {
     assert.equal((await call(migrate, migrateRequest({ 'x-sync-token': 'test-sync' }))).statusCode, 200, 'safe to re-run');
   },
 };
-scenarios[process.argv[2]]().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
+require('./scenario_runner').runScenario(scenarios);

@@ -150,10 +150,21 @@ async function exchangeRefreshToken(sql, body) {
   return issueTokenPair(sql, refresh);
 }
 
+// Public clients name themselves in the body; one that uses HTTP Basic (as
+// Gemini may) names itself there instead. Cardlake issues no client secrets,
+// so any secret sent along is ignored.
+function clientIdOf(req, body) {
+  if (body.client_id) return String(body.client_id);
+  const match = /^Basic\s+(\S+)$/i.exec(req.headers.authorization || '');
+  if (!match) return '';
+  try { return decodeURIComponent(Buffer.from(match[1], 'base64').toString('utf8').split(':')[0].replace(/\+/g, ' ')); } catch (_) { return ''; }
+}
+
 async function token(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
-    const body = await formBody(req);
+    const form = await formBody(req);
+    const body = { ...form, client_id: clientIdOf(req, form) };
     const sql = getSql();
     let tokens;
     if (body.grant_type === 'authorization_code') tokens = await exchangeAuthorizationCode(sql, body);
@@ -163,4 +174,15 @@ async function token(req, res) {
     return res.status(200).json(tokens);
   } catch (error) { return sendError(res, error, 400); }
 }
-module.exports = withSessionGuard(async function handler(req, res) { const action = req.query?.action; if (action === 'authorize') return authorize(req, res); if (action === 'token') return token(req, res); return res.status(404).json({ error: 'Not found' }); });
+async function register(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  let metadata;
+  try { metadata = await readJson(req); return res.status(201).json(oauth.registerClient(metadata)); } catch (error) {
+    // A refused registration is an assistant we don't support yet (or a new
+    // callback shape from one we do), so log what it asked for. Long digit
+    // runs, such as Google account ids, are masked.
+    console.warn('oauth.register refused', JSON.stringify({ redirect_uris: metadata?.redirect_uris, client_name: metadata?.client_name, keys: Object.keys(metadata || {}) }).replace(/\d{6,}/g, 'N').slice(0, 1000));
+    return res.status(400).json({ error: error.oauth || 'invalid_client_metadata', error_description: error.message });
+  }
+}
+module.exports = withSessionGuard(async function handler(req, res) { const action = req.query?.action; if (action === 'authorize') return authorize(req, res); if (action === 'token') return token(req, res); if (action === 'register') return register(req, res); return res.status(404).json({ error: 'Not found' }); });

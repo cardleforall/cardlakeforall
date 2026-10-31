@@ -122,6 +122,14 @@ const mcpCall = (request, authorization, method, params = {}) => request('/api/m
     const issued = await stranger('/oauth/token', { method: 'POST', form: { grant_type: 'authorization_code', code, client_id: oauth.CLAUDE_CLIENT_ID, redirect_uri: oauth.CLAUDE_REDIRECT_URI, resource: `${origin}/api/mcp`, code_verifier: verifier } });
     assert.equal(issued.status, 200, issued.text);
     assert.equal((await mcpCall(owner, `Bearer ${issued.data.access_token}`, 'tools/list')).status, 200);
+    // Gemini registers first (/oauth/register), naming a callback after this
+    // deployment's host; anything else is refused.
+    assert.equal(meta.registration_endpoint, `${origin}/oauth/register`);
+    const geminiHost = new URL(origin).hostname.replace(/\./g, '_');
+    const registered = await stranger('/oauth/register', { method: 'POST', json: { redirect_uris: [`https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-42-${geminiHost}`] } });
+    assert.equal(registered.status, 201, registered.text);
+    assert.equal(registered.data.client_id, oauth.GEMINI_CLIENT_ID);
+    assert.equal((await stranger('/oauth/register', { method: 'POST', json: { redirect_uris: ['https://evil.example/cb'] } })).status, 400);
     const challenge = await mcpCall(owner, 'Bearer not.a.token', 'tools/list');
     assert.equal(challenge.status, 401);
     assert.match(challenge.headers.get('www-authenticate'), /resource_metadata=/);

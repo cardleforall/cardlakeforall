@@ -1,4 +1,4 @@
-// The one copy of "how to connect Claude or ChatGPT to Cardlake". The setup
+// The one copy of "how to connect Claude, ChatGPT or Gemini to Cardlake". The setup
 // guide (mcp-setup.html), onboarding (welcome.html) and the vault's Connect AI
 // panel all render from here, so the steps can't drift apart.
 (function () {
@@ -31,6 +31,15 @@
       // ChatGPT keeps its own copy of a connector's tool list and never
       // refreshes it on its own.
       note: 'If Cardlake’s tools ever look out of date, open the connector in ChatGPT and click <strong>Refresh tools</strong>.',
+    },
+    gemini: {
+      name: 'Gemini',
+      where: 'Gemini',
+      steps: [
+        'In Gemini, open <strong>Customise</strong>, then <strong>Connectors</strong>, and click <strong>Custom</strong>.',
+        'Paste the address above and click <strong>Next</strong>.',
+        signInStep,
+      ],
     },
   };
 

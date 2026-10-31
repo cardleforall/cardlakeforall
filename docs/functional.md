@@ -68,7 +68,7 @@ integrations or tokens. In this section and below, "member" means the owner.
 | Setup | `/setup` | First-run setup: name, email, password. Open for an hour after the deployment first starts (section 7). |
 | Sign in | `/signin` | Email and password. |
 | Get updates | `/updates` | Turns on the Update Cardlake workflow in the owner's copy on GitHub, which the Deploy button can't copy, then links to it. Owner only. The app shows the owner **Update available**, linking here, when a newer Cardlake is out (`/api/auth/update`). |
-| Welcome (onboarding) | `/welcome.html` | Pick a starter persona → connect Claude or ChatGPT → go to the feed. |
+| Welcome (onboarding) | `/welcome.html` | Pick a starter persona → go to the feed, which offers to connect Claude or ChatGPT. |
 | MCP setup guide | `/mcp-setup.html` | How to connect each AI client, with this deployment's own address. |
 | Privacy | `/privacy.html` | What this Cardlake stores, run by its owner (section 13). |
 | Support | `/support.html` | Common problems: a forgotten password, connecting an assistant, getting updates. |
@@ -325,8 +325,14 @@ A brand-new account with no cards is sent to `/welcome.html` after sign-in.
 
 **Step 1: Sign in** ("Everything between your calendar and your to-do list").
 
-**Step 2: Pick a starter feed** ("What does your week look like?"). Four
-personas, each with 14–15 realistic starter cards, plus "Start empty":
+**Step 2: Choose your starter feed.** Four personas, each with 14–15
+realistic starter cards, plus "Or start with an empty feed". One of the four
+is selected at random to begin with, so no feed is favoured by its place on
+the page; clicking a feed selects it, and **Continue** sets up the selected
+one. An unticked box, "Also connect Claude or ChatGPT afterwards", opens the
+feed's Connect AI steps once on arrival (`?connect=1`, which the feed reads
+and removes so a refresh doesn't reopen them), unless an assistant is already
+connected:
 
 | Persona | Tagline | Mix |
 |---|---|---|
@@ -336,7 +342,7 @@ personas, each with 14–15 realistic starter cards, plus "Start empty":
 | The Curious Learner | Learning AI, maybe switching careers. | Beginner LLM videos, course bookmarks, portfolio project checklist, study reminders |
 
 Each persona card shows three preview cards and a card count. Each persona also
-carries three example prompts for the AI step.
+carries three example prompts, shown by the feed's connect card.
 
 Rules for starter content: nothing may read like someone else's life (no
 names, weekdays, dates or one-off appointments). Reminders with a time fall due
@@ -344,14 +350,21 @@ at the next occurrence of that time **in the member's own time zone** ("Gym
 7am" picked at 9am is due tomorrow at 7am). Picking is idempotent: a double
 click or retry seeds once. Starter cards respect the card limit (as many as fit).
 
-**Step 3: Connect your AI** ("Talk to your feed from Claude or ChatGPT").
-Instructions per client, with the persona's example prompts. The page polls
-every 4 seconds (for up to 15 minutes) and moves on when it sees the member's
-assistant connect.
-
-**Step 4: The feed**, with a banner: "Your starter feed is ready. N of these
+**Step 3: The feed**, with a banner: "Your starter feed is ready. N of these
 cards are samples. Like or pin the ones you want to keep; the rest clear
 themselves after two weeks, or you can clear them now." [Clear sample cards].
+
+**Connecting an assistant is offered in the feed, not during setup.** Until
+an assistant is connected, a card above the feed reads "Ask Claude about your
+feed" with one main button, **Add to Claude**, and "Use ChatGPT or another
+assistant". Both open Connect AI (section 10) on that assistant's steps, since
+this Cardlake is added by its own address. After either is clicked, the card
+shows "Waiting for you to connect…" and checks every 3 seconds (for up to 10
+minutes, only while the tab is visible). Once connected it shows two of the
+persona's example prompts, each copied with one tap. Why here: the feed
+already has cards, so the first question to the assistant gets a real answer,
+and setup never sends anyone away half-done. The × ("Not now") hides the card
+for good on that browser; **Connect AI** in the header stays.
 
 **Sample cards are on a 14-day trial.** A sample card the member has made their
 own (edited, liked, pinned or attached a file to) is kept. The rest are removed
@@ -364,9 +377,9 @@ Claude"), which lists what the assistant will be able to do and signs in with
 the owner's password. They may save cards from the assistant before ever
 opening the vault, so the owner is offered the starter-feed step on their
 first visit even if they already have cards. The step
-then says "You already have N cards", offers "Go to my feed" instead of
-"Start with an empty feed", and skips the connect step, since the assistant
-is already connected.
+then says "You already have N cards", and offers "Or go straight to my feed"
+instead of "Or start with an empty feed". The feed shows no connect card, since the
+assistant is already connected.
 
 ---
 
@@ -410,12 +423,16 @@ For a thin feed: one tap adds five fresh cards.
 |---|---|
 | Claude.ai / Claude Desktop | Add custom connector `https://<your-cardlake>/api/mcp` → Cardlake's sign-in page → the owner's password → authorize. No token. |
 | ChatGPT | Settings → Connectors (Developer mode) → add the same URL → same sign-in. No token. |
-| Claude Code, Gemini, scripts, others | Generate a **personal access token** in the Connect AI panel, then pass it as `Authorization: Bearer …`. |
+| Gemini | Customise → Connectors → Custom → paste the same URL → same sign-in. No token. |
+| Claude Code, the Gemini CLI, scripts, others | Generate a **personal access token** in the Connect AI panel, then pass it as `Authorization: Bearer …`. |
 
-**Connect AI panel** (button next to your name): explains the above; label and
-generate a token (shown **once**, with Copy buttons for the token and the server
-address); list of tokens with created and last-used dates; **Revoke** (inline
-confirm, effective immediately).
+**Connect AI panel** (button next to your name) opens on a choice: **Claude**,
+**ChatGPT** or **Gemini**, each showing this Cardlake's address with a Copy button and that
+assistant's steps, plus a Back button. Once an assistant connects, it shows
+example questions to try. A small link, "Claude Code or a script?",
+leads to tokens: label and generate a token (shown **once**, with Copy buttons
+for the token and the server address); list of tokens with created and
+last-used dates; **Revoke** (inline confirm, effective immediately).
 
 ### 10.2 What an assistant can do
 

@@ -69,12 +69,14 @@
     <hr class="divider">
 
     <div class="step-head"><span class="step-num">1</span><h2>Add Cardlake as a connector</h2></div>
-    <p class="guide-p">Using <strong>Claude.ai, Claude Desktop, or ChatGPT</strong>? This is all you need. There's no separate sign-in and no token to copy.</p>
+    <p class="guide-p">Using <strong>Claude.ai, Claude Desktop, ChatGPT, or Gemini</strong>? This is all you need. There's no separate sign-in and no token to copy.</p>
     <p class="guide-p">Server address: <code class="field-addr" data-connect-ai-address>/api/mcp on this site</code></p>
     <div class="client-name">Claude</div>
     <div data-connect-ai-steps="claude" data-list-class="guide-list"></div>
     <div class="client-name">ChatGPT</div>
     <div data-connect-ai-steps="chatgpt" data-list-class="guide-list"></div>
+    <div class="client-name">Gemini</div>
+    <div data-connect-ai-steps="gemini" data-list-class="guide-list"></div>
 
     <hr class="divider">
 
@@ -86,7 +88,7 @@
     <hr class="divider">
 
     <details class="other-clients">
-      <summary>Using Claude Code, Gemini, or another assistant instead?</summary>
+      <summary>Using Claude Code, the Gemini CLI, or another tool instead?</summary>
       <p class="guide-p">These take a token instead of signing you in directly.</p>
       <ol class="guide-list">
         <li>Open your <a href="/vault/index.html">Cardlake vault</a>, sign in, and click <strong>Connect AI</strong> next to your name.</li>
@@ -98,7 +100,7 @@
       <pre><code>claude mcp add --transport http cardlake <span data-connect-ai-address>YOUR_CARDLAKE/api/mcp</span> \
   --header "Authorization: Bearer YOUR_TOKEN_HERE"</code></pre>
 
-      <div class="client-name">Gemini (CLI or app)</div>
+      <div class="client-name">Gemini CLI and others</div>
       <p class="guide-p">Add an MCP server entry pointing at <code class="field-addr" data-connect-ai-address>YOUR_CARDLAKE/api/mcp</code>, with an <code>Authorization: Bearer YOUR_TOKEN_HERE</code> header. The exact settings screen varies by version.</p>
 
       <p class="guide-p">Back in the <strong>Connect AI</strong> panel, you can see every token you've created and revoke any of them at any time. Whatever was using it stops working right away.</p>

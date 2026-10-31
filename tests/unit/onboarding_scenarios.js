@@ -222,12 +222,4 @@ const scenarios = {
   },
 };
 
-const name = process.argv[2];
-if (!scenarios[name]) {
-  console.error(`Unknown scenario: ${name}`);
-  process.exit(2);
-}
-scenarios[name]().then(() => process.exit(0), error => {
-  console.error(error.stack || error);
-  process.exit(1);
-});
+require('./scenario_runner').runScenario(scenarios);

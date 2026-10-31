@@ -739,7 +739,16 @@ ChatGPT, Codex).
   (`resource = <this deployment>/api/mcp`).
 - **Clients**: an allowlist of known client-id URLs with their exact redirect
   URIs (ChatGPT, Claude) plus Codex's CIMD pattern restricted to
-  `http://127.0.0.1:<port>/callback/<id>`. No open dynamic registration.
+  `http://127.0.0.1:<port>/callback/<id>`, Claude Code's loopback callback,
+  and Gemini (`cardlake-gemini`, redirect
+  `https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-<google id>-<host>`,
+  where `<host>` is this deployment's host with its dots as underscores,
+  plus its `-sandbox` / `-test` hosts and `/a/` paths, which Gemini registers too).
+- **Registration** (`POST /oauth/register`, RFC 7591): Gemini needs it. It
+  returns a fixed client id for those trusted redirect URIs and refuses any
+  other, storing nothing, so it is not open dynamic registration. A refused
+  registration is logged (`oauth.register refused`, long digit runs masked),
+  so a new callback shape shows up in the deployment's logs.
 - **Authorize (GET)**: validate `response_type=code`, client/redirect pair,
   `resource`, PKCE `S256` challenge, scopes ⊆ `cardle.read cardle.write`;
   store the request in a signed, `HttpOnly`, `Path=/oauth` transaction cookie

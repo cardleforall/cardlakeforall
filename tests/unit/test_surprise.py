@@ -159,7 +159,7 @@ class SurpriseWiringTests(unittest.TestCase):
         self.assertIn("const surpriseReady = () => !SANDBOX &&", feed)
         index = source(VAULT_INDEX)
         self.assertIn("/vault/assets/aurora-feed.js?v=46", index)
-        self.assertIn("/vault/assets/vault.js?v=16", index)
+        self.assertIn("/vault/assets/vault.js?v=20", index)
         self.assertIn("/vault/assets/aurora-feed.css?v=26", index)
 
     def test_the_feed_header_always_offers_the_deal(self):

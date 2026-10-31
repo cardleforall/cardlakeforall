@@ -122,25 +122,34 @@
       setTimeout(() => { if (button.isConnected) button.textContent = 'Copy'; }, 2500);
     };
   }
-  // Onboarding's "Waiting for your assistant to connect…", for someone who
-  // hasn't connected one yet. Already-connected accounts see no status: we
+  // "Waiting for your assistant to connect…", then example questions once it
+  // has, for someone who hasn't connected one yet. Already-connected
+  // accounts see no status: we
   // can't tell which assistant is connected, so "Connected" could mislead
   // someone adding a second one.
   async function watchForAssistantConnection(modal) {
     const status = modal.querySelector('[data-connect-status]');
-    const isConnected = async () => (await api('/api/onboarding')).aiConnected === true;
-    try { if (await isConnected()) return; } catch (_) { return; }
+    try { if ((await api('/api/onboarding')).aiConnected === true) return; } catch (_) { return; }
     status.hidden = false;
     status.textContent = 'Waiting for your assistant to connect…';
+    whenAssistantConnects(modal, () => {
+      status.classList.add('connected');
+      status.textContent = 'Connected. Your assistant can see your feed.';
+      modal.querySelector('[data-connect-prompts]').hidden = false;
+    });
+  }
+  // Checks every few seconds, for up to ten minutes, until an assistant
+  // finishes its sign-in (Claude and ChatGPT do it in their own tab). Stops
+  // early once `element` has left the page.
+  function whenAssistantConnects(element, onConnected) {
     const stopAt = Date.now() + 10 * 60 * 1000;
     const timer = setInterval(async () => {
-      if (!modal.isConnected || Date.now() > stopAt) return clearInterval(timer);
+      if (!element.isConnected || Date.now() > stopAt) return clearInterval(timer);
       if (document.hidden) return;
       try {
-        if (!(await isConnected())) return;
+        if ((await api('/api/onboarding')).aiConnected !== true) return;
         clearInterval(timer);
-        status.classList.add('connected');
-        status.textContent = 'Connected. Your assistant can see your feed.';
+        onConnected();
       } catch (_) { /* try again on the next tick */ }
     }, 3000);
   }
@@ -159,15 +168,21 @@
   }
   // opener gets focus back when the dialog closes (Safari doesn't focus a
   // clicked button, so it's passed in rather than read from activeElement).
-  function openApiTokensModal(opener) {
+  // view is where it opens: 'pick' (the choice of assistant) or one
+  // assistant's steps.
+  function openApiTokensModal(opener, view = 'pick') {
     document.getElementById('cardle-tokens-modal')?.remove();
     const modal = document.createElement('div');
     modal.id = 'cardle-tokens-modal';
     modal.className = 'vh-modal';
-    // Laid out like onboarding's Connect AI step (welcome.html): pick an
-    // assistant, copy the address, follow its steps. Tokens get their own tab
-    // because only Claude Code, Gemini and scripts need one.
-    modal.innerHTML = `<div class="vh-modal-card cardle-tokens-card" role="dialog" aria-modal="true" aria-labelledby="cardle-tokens-title"><h3 id="cardle-tokens-title">Connect an AI assistant</h3><p>Connect once, then ask your assistant what's on your plate, or tell it to add, snooze or tick things off.</p><div class="cardle-connect-tabs" role="group" aria-label="Choose your assistant"><button type="button" data-connect-client="claude" aria-pressed="true">Claude</button><button type="button" data-connect-client="chatgpt" aria-pressed="false">ChatGPT</button><button type="button" data-connect-client="token" aria-pressed="false">Claude Code &amp; others</button></div><div data-connect-oauth><div class="cardle-token-address"><code data-server-address>${escapeHtml(window.CardleConnectAI.SERVER_ADDRESS)}</code><button type="button" data-copy-server>Copy</button></div><div class="cardle-connect-steps" data-connect-steps></div><p class="cardle-connect-status" data-connect-status role="status" hidden></p><h4>Then try asking</h4><div class="cardle-connect-prompts">${window.CardleConnectAI.promptsHtml(window.CardleConnectAI.EXAMPLE_PROMPTS.slice(0, 3))}</div></div><div data-connect-token hidden><p>Claude Code, Gemini and scripts connect with a personal access token and the address <code>${escapeHtml(window.CardleConnectAI.SERVER_ADDRESS)}</code>. Each token is shown only once, so copy it somewhere safe right away. <a href="/mcp-setup.html" target="_blank" rel="noopener noreferrer">Setup guide</a></p><div class="cardle-token-new"><input type="text" aria-label="Token label" placeholder="Label, e.g. Claude Code" maxlength="100"><button type="submit" class="vh-add" data-generate>Generate token</button></div><p class="cardle-token-error" data-token-error role="alert"></p><div class="cardle-token-reveal" data-token-reveal hidden></div><ul class="cardle-token-list" data-token-list></ul><details class="cardle-sync-token" data-sync-token hidden><summary>Advanced: sync token</summary><p>For scripts and Cardlake's system tests, not for assistants. It works in a separate shared space, never in your own cards. Your Cardlake made it; keep it private.</p><code data-sync-token-value></code><button type="button" data-copy-sync>Copy</button></details></div><div><button type="button" class="vh-cancel" data-close>Close</button></div></div>`;
+    // Pick Claude, ChatGPT or Gemini first, then copy this Cardlake's address
+    // and follow that assistant's steps. Tokens sit behind a small link
+    // because only Claude Code and scripts need one. Example questions wait
+    // until the assistant connects.
+    const { SERVER_ADDRESS, EXAMPLE_PROMPTS, stepsHtml, promptsHtml } = window.CardleConnectAI;
+    const addressHtml = `<div class="cardle-token-address"><code data-server-address>${escapeHtml(SERVER_ADDRESS)}</code><button type="button" data-copy-server>Copy</button></div>`;
+    const ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+    modal.innerHTML = `<div class="vh-modal-card cardle-tokens-card" role="dialog" aria-modal="true" aria-labelledby="cardle-tokens-title"><h3 id="cardle-tokens-title" tabindex="-1">Connect your AI</h3><div data-connect-view="pick"><p>Then ask it what's on your plate, or tell it to add, snooze or tick things off.</p><div class="cardle-connect-picks"><button type="button" class="cardle-connect-pick" data-pick="claude"><span><b>Claude</b><small>Paste one link</small></span>${ARROW}</button><button type="button" class="cardle-connect-pick" data-pick="chatgpt"><span><b>ChatGPT</b><small>Paste one link</small></span>${ARROW}</button><button type="button" class="cardle-connect-pick" data-pick="gemini"><span><b>Gemini</b><small>Paste one link</small></span>${ARROW}</button></div><button type="button" class="cardle-connect-other" data-pick="token">Claude Code or a script?</button></div><div data-connect-view="claude" hidden>${addressHtml}<div class="cardle-connect-steps">${stepsHtml('claude')}</div></div><div data-connect-view="chatgpt" hidden>${addressHtml}<div class="cardle-connect-steps">${stepsHtml('chatgpt')}</div></div><div data-connect-view="gemini" hidden>${addressHtml}<div class="cardle-connect-steps">${stepsHtml('gemini')}</div></div><div data-connect-view="token" hidden><p>Claude Code, the Gemini CLI and scripts connect with a personal access token and the address <code>${escapeHtml(SERVER_ADDRESS)}</code>. Each token is shown only once, so copy it somewhere safe right away. <a href="/mcp-setup.html" target="_blank" rel="noopener noreferrer">Setup guide</a></p><div class="cardle-token-new"><input type="text" aria-label="Token label" placeholder="Label, e.g. Claude Code" maxlength="100"><button type="submit" class="vh-add" data-generate>Generate token</button></div><p class="cardle-token-error" data-token-error role="alert"></p><div class="cardle-token-reveal" data-token-reveal hidden></div><ul class="cardle-token-list" data-token-list></ul><details class="cardle-sync-token" data-sync-token hidden><summary>Advanced: sync token</summary><p>For scripts and Cardlake's system tests, not for assistants. It works in a separate shared space, never in your own cards. Your Cardlake made it; keep it private.</p><code data-sync-token-value></code><button type="button" data-copy-sync>Copy</button></details></div><div data-connect-progress hidden><p class="cardle-connect-status" data-connect-status role="status" hidden></p><div data-connect-prompts hidden><h4>Now try asking</h4><div class="cardle-connect-prompts">${promptsHtml(EXAMPLE_PROMPTS.slice(0, 3))}</div></div></div><div class="cardle-connect-actions"><button type="button" class="vh-cancel" data-back hidden>Back</button><button type="button" class="vh-cancel" data-close>Close</button></div></div>`;
     document.body.appendChild(modal);
     const card = modal.querySelector('[role="dialog"]');
     const close = () => { modal.remove(); opener?.focus(); };
@@ -182,17 +197,20 @@
     });
     modal.onclick = e => { if (e.target === modal) close(); };
     modal.querySelector('[data-close]').onclick = close;
-    wireCopy(modal.querySelector('[data-copy-server]'), modal.querySelector('[data-server-address]'));
-    const tabs = [...modal.querySelectorAll('[data-connect-client]')];
-    const showClient = client => {
-      tabs.forEach(tab => tab.setAttribute('aria-pressed', String(tab.dataset.connectClient === client)));
-      modal.querySelector('[data-connect-oauth]').hidden = client === 'token';
-      modal.querySelector('[data-connect-token]').hidden = client !== 'token';
-      if (client !== 'token') modal.querySelector('[data-connect-steps]').innerHTML = window.CardleConnectAI.stepsHtml(client);
+    modal.querySelectorAll('.cardle-token-address').forEach(row => wireCopy(row.querySelector('[data-copy-server]'), row.querySelector('[data-server-address]')));
+    const back = modal.querySelector('[data-back]');
+    // The waiting status and, once connected, the example questions belong
+    // to the Claude, ChatGPT and Gemini steps only.
+    const showView = (view, focus) => {
+      modal.querySelectorAll('[data-connect-view]').forEach(el => { el.hidden = el.dataset.connectView !== view; });
+      modal.querySelector('[data-connect-progress]').hidden = !['claude', 'chatgpt', 'gemini'].includes(view);
+      back.hidden = view === 'pick';
+      focus?.focus();
     };
-    tabs.forEach(tab => { tab.onclick = () => showClient(tab.dataset.connectClient); });
-    showClient('claude');
-    tabs[0].focus();
+    const firstControl = view => modal.querySelector(`[data-connect-view="${view}"]`).querySelector('button, input');
+    modal.querySelectorAll('[data-pick]').forEach(pick => pick.addEventListener('click', () => showView(pick.dataset.pick, firstControl(pick.dataset.pick))));
+    back.onclick = () => showView('pick', modal.querySelector('[data-pick="claude"]'));
+    showView(view, view === 'pick' ? modal.querySelector('[data-pick="claude"]') : firstControl(view));
     watchForAssistantConnection(modal);
     showSyncToken(modal);
     modal.querySelector('[data-generate]').addEventListener('click', async () => {
@@ -224,13 +242,27 @@
   // starter cards is offered a way to clear them. Onboarding is optional: if
   // its API is unavailable the vault loads as usual.
   const SAMPLE_BANNER_DISMISSED = 'cardle-sample-banner-dismissed';
+  const CONNECT_CARD_DISMISSED = 'cardle-connect-card-dismissed';
+  const isDismissed = key => { try { return localStorage.getItem(key) === 'true'; } catch (_) { return false; } };
+  const rememberDismissed = key => { try { localStorage.setItem(key, 'true'); } catch (_) { /* storage blocked */ } };
   async function followOnboarding() {
     let status;
     try { status = await api('/api/onboarding'); } catch (_) { return; }
     if (status.needsOnboarding) { location.replace('/welcome.html'); return; }
-    let dismissed = false;
-    try { dismissed = localStorage.getItem(SAMPLE_BANNER_DISMISSED) === 'true'; } catch (_) { /* storage blocked */ }
-    if (status.sampleCount > 0 && !dismissed) showSampleBanner(status.sampleCount, new URLSearchParams(location.search).get('welcome') === '1');
+    if (status.sampleCount > 0 && !isDismissed(SAMPLE_BANNER_DISMISSED)) showSampleBanner(status.sampleCount, new URLSearchParams(location.search).get('welcome') === '1');
+    // Added last so it sits above the sample banner: it's the one thing to do.
+    if (status.aiConnected === false && !isDismissed(CONNECT_CARD_DISMISSED)) showConnectCard(status.personas?.find(persona => persona.id === status.persona)?.prompts);
+    if (takeConnectRequest() && status.aiConnected === false) openApiTokensModal(null);
+  }
+  // Onboarding's "Also connect Claude or ChatGPT afterwards" (welcome.js) asks
+  // for the connect steps once: the request is removed from the address so a
+  // refresh doesn't reopen them.
+  function takeConnectRequest() {
+    const url = new URL(location.href);
+    if (url.searchParams.get('welcome') !== '1' || url.searchParams.get('connect') !== '1') return false;
+    url.searchParams.delete('connect');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    return true;
   }
   function showSampleBanner(count, justOnboarded) {
     const main = document.querySelector('.main');
@@ -242,7 +274,7 @@
     const lead = justOnboarded ? '<strong>Your starter feed is ready.</strong> ' : '';
     banner.innerHTML = `<span>${lead}${count} of these cards are samples. Like or pin the ones you want to keep; the rest clear themselves after two weeks, or you can clear them now. Want more? Tap Deal me 5 for fresh videos and ideas.</span><button type="button" data-clear-samples>Clear sample cards</button><button type="button" class="cardle-sample-dismiss" data-dismiss aria-label="Hide this message">&times;</button>`;
     main.prepend(banner);
-    const hide = () => { try { localStorage.setItem(SAMPLE_BANNER_DISMISSED, 'true'); } catch (_) { /* storage blocked */ } banner.remove(); };
+    const hide = () => { rememberDismissed(SAMPLE_BANNER_DISMISSED); banner.remove(); };
     banner.querySelector('[data-dismiss]').onclick = hide;
     banner.querySelector('[data-clear-samples]').onclick = async event => {
       event.target.disabled = true;
@@ -256,6 +288,54 @@
         banner.querySelector('span').textContent = `Could not clear sample cards: ${error.message}`;
       }
     };
+  }
+  // Connecting Claude or ChatGPT is offered here, not during setup
+  // (welcome.html): the feed already has cards, so the first question to the
+  // assistant gets a real answer, and nobody has to leave setup half-done.
+  // One main button at a time: "Add to Claude" until the connection is
+  // confirmed, then example questions to try. "Not now" hides it for good;
+  // Connect AI in the header stays. This Cardlake is added to Claude by its
+  // own address, so the button opens Connect AI's Claude steps; the other
+  // link opens its choice of assistant.
+  function showConnectCard(personaPrompts) {
+    const main = document.querySelector('.main');
+    const { EXAMPLE_PROMPTS } = window.CardleConnectAI || {};
+    if (!main || !EXAMPLE_PROMPTS || document.getElementById('cardle-connect-card')) return;
+    const prompts = (personaPrompts?.length ? personaPrompts : EXAMPLE_PROMPTS).slice(0, 2);
+    const card = document.createElement('section');
+    card.id = 'cardle-connect-card';
+    card.className = 'cardle-connect-card';
+    card.setAttribute('aria-labelledby', 'cardle-connect-card-title');
+    card.innerHTML = `<h2 id="cardle-connect-card-title">Ask Claude about your feed</h2><p data-connect-card-lead>Add Cardlake to Claude, then save and find cards right from your chat.</p><div class="cardle-connect-card-actions" data-connect-card-actions><button type="button" class="cardle-connect-card-primary" data-add-to-claude>Add to Claude</button><button type="button" class="cardle-connect-card-other" data-connect-other>Use ChatGPT or another assistant</button></div><p class="cardle-connect-status" data-connect-card-status role="status" hidden></p><div class="cardle-connect-card-prompts" data-connect-card-prompts hidden><p>Try asking</p>${prompts.map(prompt => `<button type="button" data-copy-prompt="${escapeHtml(prompt)}">&ldquo;${escapeHtml(prompt)}&rdquo;</button>`).join('')}</div><button type="button" class="cardle-connect-card-dismiss" data-dismiss aria-label="Not now" title="Not now">&times;</button>`;
+    main.prepend(card);
+    const status = card.querySelector('[data-connect-card-status]');
+    const dismiss = card.querySelector('[data-dismiss]');
+    let watching = false;
+    const waitForConnection = () => {
+      if (watching) return;
+      watching = true;
+      status.hidden = false;
+      status.textContent = 'Waiting for you to connect…';
+      whenAssistantConnects(card, () => {
+        card.querySelector('#cardle-connect-card-title').textContent = 'You’re connected';
+        card.querySelector('[data-connect-card-lead]').hidden = true;
+        card.querySelector('[data-connect-card-actions]').hidden = true;
+        status.classList.add('connected');
+        status.textContent = 'Connected. Your assistant can see your feed.';
+        card.querySelector('[data-connect-card-prompts]').hidden = false;
+        dismiss.setAttribute('aria-label', 'Close');
+        dismiss.title = 'Close';
+      });
+    };
+    card.querySelector('[data-add-to-claude]').addEventListener('click', event => { waitForConnection(); openApiTokensModal(event.currentTarget, 'claude'); });
+    card.querySelector('[data-connect-other]').addEventListener('click', event => { waitForConnection(); openApiTokensModal(event.currentTarget); });
+    card.querySelectorAll('[data-copy-prompt]').forEach(button => button.addEventListener('click', async () => {
+      const original = button.innerHTML;
+      try { await navigator.clipboard.writeText(button.dataset.copyPrompt); button.textContent = 'Copied. Paste it into your assistant'; }
+      catch (_) { button.textContent = 'Could not copy. Type it into your assistant'; }
+      setTimeout(() => { if (button.isConnected) button.innerHTML = original; }, 2000);
+    }));
+    dismiss.addEventListener('click', () => { rememberDismissed(CONNECT_CARD_DISMISSED); card.remove(); });
   }
   // About & help's "Sign out on all devices" (api/_lib/account-routes.js).
   // A second click confirms, as Delete does in the feed: embedded browsers
