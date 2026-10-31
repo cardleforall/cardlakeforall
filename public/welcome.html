@@ -42,10 +42,6 @@
   .welcome-signin-btn:disabled { opacity: .6; cursor: default; }
   .fine { font-size: 12px; color: var(--muted); margin: 14px 0 0; line-height: 1.5; }
   .error { color: oklch(52% .2 25); font-size: 13px; min-height: 1em; margin: 12px 0 0; }
-  .figure { margin: 0 auto 24px; max-width: 640px; }
-  .figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 20px 40px -30px oklch(28% .08 285 / .6); }
-  .figure figcaption { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
-  .feed-peek img { max-height: 240px; object-fit: cover; object-position: top; }
   .personas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .persona { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; cursor: pointer; color: var(--ink); display: flex; flex-direction: column; gap: 10px; transition: border-color .15s, box-shadow .15s, transform .15s; }
   .persona:hover:not(:disabled) { border-color: oklch(62% .16 260 / .55); box-shadow: 0 18px 36px -26px oklch(40% .16 260 / .7); transform: translateY(-1px); }
@@ -60,35 +56,8 @@
   .start-empty { text-align: center; margin: 20px 0 0; font-size: 13px; }
   .linklike { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; font-size: inherit; }
   .linklike:hover { text-decoration: underline; }
-  .connect { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-  .tabs { display: inline-flex; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
-  .tabs button { border: 0; background: none; border-radius: 9px; padding: 8px 16px; font-weight: 700; font-size: 14px; color: var(--muted); cursor: pointer; }
-  .tabs button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 3px oklch(28% .08 285 / .2); }
-  .address { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-  .address code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 13px; background: var(--soft); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
   .btn { border: 0; border-radius: 11px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
-  .btn-primary { color: #fff; font-family: 'Space Grotesk', sans-serif; box-shadow: 0 10px 24px -8px oklch(55% .16 260 / .6); }
-  .btn-quiet { background: #fff; border: 1px solid var(--line); color: var(--ink); }
-  .steps { margin: 0 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.65; color: oklch(30% .02 275); }
-  .steps li { margin-bottom: 6px; }
-  .connect-ai-note { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 0 0 12px; }
-  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--soft); border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; margin: 4px 0 18px; }
-  .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: oklch(75% .12 80); animation: pulse 1.6s ease-in-out infinite; }
-  .status.connected { color: oklch(40% .12 150); background: oklch(96% .04 150); border-color: oklch(70% .1 150 / .4); }
-  .status.connected::before { background: oklch(60% .15 150); animation: none; }
-  @keyframes pulse { 50% { opacity: .35; } }
-  @media (prefers-reduced-motion: reduce) { .status::before { animation: none; } .persona { transition: none; } }
-  .try h3 { font-size: 14px; margin: 0 0 8px; }
-  .try ul { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .try button { width: 100%; text-align: left; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; color: var(--ink); cursor: pointer; }
-  .try button:hover { border-color: oklch(62% .16 260 / .45); }
-  .other { font-size: 13px; color: var(--muted); margin: 0 0 20px; line-height: 1.6; }
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .actions [hidden] { display: none; }
-  .connect .figure { margin: 0; }
-  @media (max-width: 760px) {
-    .connect { grid-template-columns: 1fr; }
-  }
+  @media (prefers-reduced-motion: reduce) { .persona { transition: none; } }
   @media (max-width: 640px) {
     .topbar { padding: 16px; flex-wrap: wrap; }
     .progress .label { display: none; }
@@ -97,7 +66,6 @@
     .intro h1 { font-size: 25px; }
     .panel { padding: 20px 16px; }
     .personas { grid-template-columns: 1fr; }
-    .feed-peek img { max-height: 170px; }
   }
 </style>
 </head>
@@ -111,8 +79,7 @@
   <ol class="progress" aria-label="Setup progress" hidden data-progress-steps>
     <li data-progress="signin"><span class="dot">1</span><span class="label">Sign in</span></li>
     <li data-progress="persona"><span class="dot">2</span><span class="label">Start your feed</span></li>
-    <li data-progress="connect"><span class="dot">3</span><span class="label">Connect AI</span></li>
-    <li data-progress="feed"><span class="dot">4</span><span class="label">Your feed</span></li>
+    <li data-progress="feed"><span class="dot">3</span><span class="label">Your feed</span></li>
   </ol>
 </header>
 
@@ -124,9 +91,9 @@
 
   <section class="step" data-step="persona" hidden>
     <div class="intro">
-      <span class="eyebrow">Step 2 of 4</span>
+      <span class="eyebrow">Step 2 of 3</span>
       <h1 tabindex="-1">Make this feed yours</h1>
-      <p data-persona-lead>Start with something you want to remember, or choose a ready-made feed below. You can connect an AI assistant later.</p>
+      <p data-persona-lead>Start with something you want to remember, or choose a ready-made feed below. You can connect Claude or ChatGPT from your feed.</p>
     </div>
     <div class="intro" data-start-own-wrap>
       <button type="button" class="btn welcome-signin-btn" data-start-own>Save your first reminder</button>
@@ -134,50 +101,10 @@
     <div class="personas" data-personas></div>
     <p class="error" data-persona-error aria-live="polite" style="text-align: center;"></p>
     <p class="start-empty"><span data-start-empty-lead>Rather start from scratch?</span> <button type="button" class="linklike" data-start-empty>Start with an empty feed</button><br>Either way, tap <strong>Deal me 5</strong> in your feed any time for fresh videos and ideas.</p>
-    <figure class="figure feed-peek" style="margin-top: 32px;">
-      <img src="/onboarding/feed.webp" width="1478" height="676" loading="lazy" alt="The Cardlake feed: filters for reminders, learnings, work, family, bookmarks and misc notes, above a reminder card with Complete and Snooze.">
-      <figcaption>Your feed mixes reminders, learnings and work in one place.</figcaption>
-    </figure>
-  </section>
-
-  <section class="step" data-step="connect" hidden>
-    <div class="intro">
-      <span class="eyebrow">Step 3 of 4</span>
-      <h1 tabindex="-1">Talk to your feed from Claude or ChatGPT</h1>
-      <p>Connect once, then ask your assistant what's on your plate, or tell it to add, snooze or tick things off.</p>
-    </div>
-    <div class="connect">
-      <div class="panel">
-        <div class="tabs" role="group" aria-label="Choose your assistant">
-          <button type="button" data-client="claude" aria-pressed="true">Claude</button>
-          <button type="button" data-client="chatgpt" aria-pressed="false">ChatGPT</button>
-        </div>
-        <div class="address">
-          <code data-connect-ai-address></code>
-          <button type="button" class="btn btn-quiet" data-copy-address>Copy</button>
-        </div>
-        <div data-client-steps></div>
-        <p class="status" data-status role="status">Waiting for your assistant to connect&hellip;</p>
-        <div class="try">
-          <h3>Then try asking</h3>
-          <ul data-prompts></ul>
-        </div>
-        <p class="other">Using Claude Code, Gemini or another assistant? <a href="/mcp-setup.html" target="_blank" rel="noopener">See the setup guide</a>. Those connect with a token from <strong>Connect AI</strong> in your feed.</p>
-        <div class="actions">
-          <button type="button" class="btn btn-primary grad-bg" data-finish>Go to my feed</button>
-          <button type="button" class="linklike" data-skip>Skip for now</button>
-        </div>
-      </div>
-      <figure class="figure">
-        <img src="/onboarding/claude-answer.webp" width="940" height="775" loading="lazy" alt="An assistant answering &ldquo;What should I learn this week?&rdquo; with Cardlake's list_feed tool, showing three learning cards with Pin, Like and Remind later buttons.">
-        <figcaption>Once connected, your assistant answers with your real cards.</figcaption>
-      </figure>
-    </div>
   </section>
 
 </main>
 
-<script src="/vault/assets/connect-ai.js"></script>
-<script src="/vault/assets/welcome.js?v=3"></script>
+<script src="/vault/assets/welcome.js?v=4"></script>
 </body>
 </html>

@@ -1049,7 +1049,7 @@ class UxFixesTests(unittest.TestCase):
         self.assertIn('<h3 id="cardle-tokens-title">', modal)
         self.assertIn('aria-label="Token label"', modal)
         # Focus moves into the dialog, stays there, and goes back to the button.
-        self.assertIn("tabs[0].focus();", modal)
+        self.assertIn("tabs.find(tab => tab.dataset.connectClient === client).focus();", modal)
         self.assertIn("event.key === 'Escape'", modal)
         self.assertIn("event.key !== 'Tab'", modal)
         self.assertIn("opener?.focus()", modal)
@@ -1671,24 +1671,26 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         self.assertLess(modal.index("data-server-address"), modal.index('class="cardle-token-new"'))
         self.assertIn("wireCopy(modal.querySelector('[data-copy-server]'), modal.querySelector('[data-server-address]'));", modal)
 
-    def test_connect_ai_matches_the_onboarding_step(self):
-        # Same shape as welcome.html's Connect AI step: pick an assistant, copy
-        # the address, follow that assistant's steps from connect-ai.js, watch
-        # for the connection. Tokens sit behind their own tab.
+    def test_connect_ai_picks_an_assistant_and_watches_for_the_connection(self):
+        # Pick an assistant, copy the address, follow that assistant's steps
+        # from connect-ai.js, watch for the connection. Tokens sit behind
+        # their own tab.
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
         for client in ("claude", "chatgpt", "token"):
             self.assertIn(f'data-connect-client="{client}"', modal)
         self.assertIn("window.CardleConnectAI.stepsHtml(client)", modal)
         self.assertIn("window.CardleConnectAI.promptsHtml(", modal)
-        self.assertIn("showClient('claude');", modal)
+        self.assertIn("function openApiTokensModal(opener, client = 'claude') {", js)
+        self.assertIn("showClient(client);", modal)
         self.assertLess(modal.index("data-connect-oauth"), modal.index("data-connect-token hidden"))
         self.assertLess(modal.index("data-connect-token hidden"), modal.index('class="cardle-token-new"'))
         self.assertIn("watchForAssistantConnection(modal);", modal)
         watch = js_block(js, "async function watchForAssistantConnection(modal) {", "\n  // opener gets focus back")
         self.assertIn("api('/api/onboarding')", watch)
         # Polling stops once the dialog closes.
-        self.assertIn("if (!modal.isConnected || Date.now() > stopAt) return clearInterval(timer);", watch)
+        self.assertIn("whenAssistantConnects(modal, () => {", watch)
+        self.assertIn("if (!element.isConnected || Date.now() > stopAt) return clearInterval(timer);", watch)
 
     def copy(self, clipboard_works):
         wire = js_block(source(VAULT_JS), "function wireCopy(button, code) {", "\n  // opener gets focus back")

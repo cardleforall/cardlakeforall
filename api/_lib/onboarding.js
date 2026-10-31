@@ -1,5 +1,6 @@
 // First-run onboarding (public/welcome.html): pick a persona, get a starter
-// feed, connect an AI assistant. Routed through api/vault.js in production
+// feed. aiConnected tells the feed whether to offer connecting an AI
+// assistant (the connect card in vault.js). Routed through api/vault.js in production
 // (resource=onboarding) to stay within the Vercel Hobby function limit.
 //
 //   GET    /api/onboarding          status + persona summaries

@@ -1,5 +1,6 @@
-"""First-run onboarding: sign in -> pick a starter persona -> connect an AI
-assistant -> the feed (public/welcome.html, api/_lib/onboarding.js).
+"""First-run onboarding: sign in -> pick a starter persona -> the feed, which
+then offers to connect an AI assistant (public/welcome.html,
+api/_lib/onboarding.js, the connect card in vault.js).
 Database behavior runs against real Postgres via PGlite (see pg_harness.js);
 each scenario lives in onboarding_scenarios.js and runs in its own Node process
 with a fresh in-memory database. The rest checks content and wiring."""
@@ -128,9 +129,10 @@ class ConnectAiContentTests(unittest.TestCase):
     """The Claude/ChatGPT connection steps live in one file; every page that
     shows them renders from it instead of keeping its own copy."""
 
-    def test_setup_guide_welcome_and_vault_load_the_shared_steps(self):
+    def test_setup_guide_and_vault_load_the_shared_steps(self):
         self.assertIn('<script src="/vault/assets/connect-ai.js"></script>', source(MCP_SETUP))
-        self.assertIn('<script src="/vault/assets/connect-ai.js"></script>', source(WELCOME))
+        # Setup no longer shows the steps: the feed offers them instead.
+        self.assertNotIn("connect-ai.js", source(WELCOME))
         index = source(VAULT_INDEX)
         self.assertLess(index.index("/vault/assets/connect-ai.js"), index.index("/vault/assets/vault.js"))
         self.assertIn("data-connect-ai-steps=\"claude\"", source(MCP_SETUP))
@@ -161,23 +163,24 @@ class ConnectAiContentTests(unittest.TestCase):
 
 
 class OnboardingWiringTests(unittest.TestCase):
-    def test_first_card_shortcut_preserves_starter_flow_and_recovers_from_failure(self):
+    # Choosing how to start is the last setup step: it lands on the feed,
+    # which offers to connect an assistant, rather than on a connect screen.
+    def test_choosing_a_start_goes_straight_to_the_feed_and_recovers_from_failure(self):
         js = source(WELCOME_JS)
         functions = js[js.index("  function goToFeed("):js.index("  // ---- step 1")]
-        functions += js[js.index("  async function choosePersona("):js.index("  // ---- step 3")]
+        functions += js[js.index("  async function choosePersona("):js.index("  function wireStartButtons(")]
         script = r'''
           const assert = require('node:assert/strict');
           const vm = require('node:vm');
-          let fail = false, connected = 0, redirects = [], requests = [];
+          let fail = false, redirects = [], requests = [];
           const controls = [{ disabled: false }, { disabled: false }];
           const error = { textContent: '' };
           const button = { querySelector: () => null, setAttribute() {}, removeAttribute() {} };
           const context = {
-            state: {}, Intl, window: { clearInterval() {} },
+            state: {}, Intl,
             location: { replace: url => redirects.push(url) },
-            history: { replaceState() {} },
             document: { querySelectorAll: () => controls },
-            $: () => error, showConnect: () => connected++,
+            $: () => error,
             api: async (url, options) => {
               requests.push(JSON.parse(options.body));
               if (fail) throw new Error('Try again');
@@ -186,19 +189,18 @@ class OnboardingWiringTests(unittest.TestCase):
           vm.createContext(context);
           vm.runInContext(FUNCTIONS, context);
           (async () => {
-            await context.choosePersona('empty', null);
-            assert.equal(connected, 1);
-            assert.equal(redirects.length, 0);
+            await context.choosePersona('ai-builder', null);
+            assert.equal(requests.at(-1).persona, 'ai-builder');
+            assert.equal(redirects.at(-1), '/vault/index.html?welcome=1');
             fail = true;
             await context.choosePersona('empty', button, true);
-            assert.equal(redirects.length, 0);
+            assert.equal(redirects.length, 1);
             assert.ok(controls.every(control => !control.disabled));
             assert.match(error.textContent, /Try again/);
             fail = false;
             await context.choosePersona('empty', button, true);
             assert.equal(requests.at(-1).persona, 'empty');
             assert.equal(redirects.at(-1), '/vault/index.html?welcome=1&capture=reminder');
-            assert.equal(connected, 1);
           })().catch(error => { console.error(error); process.exitCode = 1; });
         '''.replace("FUNCTIONS", json.dumps(functions))
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
@@ -283,17 +285,22 @@ class OnboardingWiringTests(unittest.TestCase):
         for src, alt in re.findall(r'<img src="([^"]+)"[^>]*alt="([^"]+)"', html):
             self.assertTrue((PUBLIC / src.lstrip("/")).is_file(), src)
             self.assertTrue(alt.strip(), src)
-        self.assertEqual(len(re.findall(r"<img ", html)), 2)
+        # The feed screenshot under the starter feeds looked like a menu
+        # people could click, and the connect step's picture went with it.
+        self.assertEqual(len(re.findall(r"<img ", html)), 0)
+        self.assertNotIn('data-step="connect"', html)
 
     # Someone whose session lapsed lands on the sign-in step too, and must not
-    # be shown what looks like first-time setup. The 1-4 steps appear only
+    # be shown what looks like first-time setup. The 1-3 steps appear only
     # once the server has said this account needs onboarding.
     def test_setup_steps_show_only_to_new_accounts(self):
         html = source(WELCOME)
         self.assertIn('<ol class="progress" aria-label="Setup progress" hidden data-progress-steps>', html)
         self.assertIn(".progress[hidden] { display: none; }", html)
         js = source(WELCOME_JS)
-        self.assertIn("const ONBOARDING_STEPS = ['persona', 'connect'];", js)
+        self.assertIn("const ONBOARDING_STEPS = ['persona'];", js)
+        self.assertIn('<span class="eyebrow">Step 2 of 3</span>', html)
+        self.assertEqual(re.findall(r'data-progress="(\w+)"', html), ["signin", "persona", "feed"])
         show = js.split("function show(step) {", 1)[1].split("\n  }", 1)[0]
         self.assertIn("$('[data-progress-steps]').hidden = !ONBOARDING_STEPS.includes(step);", show)
 
@@ -301,6 +308,68 @@ class OnboardingWiringTests(unittest.TestCase):
         self.assertNotIn('data-step="requested"', source(WELCOME))
         self.assertNotIn('data-step="signin"', source(WELCOME))
         self.assertNotIn("gsi/client", source(WELCOME_JS))
+
+
+class FeedConnectCardTests(unittest.TestCase):
+    """Setup no longer has a connect step: the feed offers "Add to Claude" in
+    a card above the cards, until the account connects or says not now."""
+
+    def test_the_card_shows_only_to_accounts_without_an_assistant(self):
+        js = source(VAULT_JS)
+        functions = js[js.index("  const SAMPLE_BANNER_DISMISSED"):js.index("  function showSampleBanner(")]
+        script = r'''
+          const assert = require('node:assert/strict');
+          const vm = require('node:vm');
+          const run = async (status, stored = {}, storageBlocked = false) => {
+            const shown = [], redirects = [];
+            const context = {
+              URLSearchParams, location: { search: '', replace: url => redirects.push(url) },
+              localStorage: { getItem: key => { if (storageBlocked) throw new Error('blocked'); return stored[key] ?? null; } },
+              api: async () => status,
+              showSampleBanner() {}, showConnectCard: prompts => shown.push(prompts),
+            };
+            vm.createContext(context);
+            vm.runInContext(FUNCTIONS, context);
+            await context.followOnboarding();
+            return { shown, redirects };
+          };
+          const personas = [{ id: 'ai-builder', prompts: ['Which videos have I saved about evals?'] }];
+          (async () => {
+            let result = await run({ aiConnected: false, persona: 'ai-builder', personas });
+            assert.deepEqual(result.shown, [['Which videos have I saved about evals?']]);
+            result = await run({ aiConnected: false, persona: 'empty', personas });
+            assert.deepEqual(result.shown, [undefined]);
+            assert.deepEqual((await run({ aiConnected: true })).shown, []);
+            // An older server that doesn't say: no card rather than a wrong one.
+            assert.deepEqual((await run({})).shown, []);
+            assert.deepEqual((await run({ aiConnected: false }, { 'cardle-connect-card-dismissed': 'true' })).shown, []);
+            assert.equal((await run({ aiConnected: false }, {}, true)).shown.length, 1);
+            result = await run({ needsOnboarding: true, aiConnected: false });
+            assert.deepEqual(result.redirects, ['/welcome.html']);
+            assert.deepEqual(result.shown, []);
+          })().catch(error => { console.error(error); process.exitCode = 1; });
+        '''.replace("FUNCTIONS", json.dumps(functions))
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_the_card_has_one_main_button_and_a_way_out(self):
+        js = source(VAULT_JS)
+        card = js[js.index("  function showConnectCard("):js.index("  // About & help's \"Sign out on all devices\"")]
+        self.assertIn("Ask Claude about your feed", card)
+        self.assertIn('class="cardle-connect-card-primary"', card)
+        self.assertEqual(card.count("cardle-connect-card-primary"), 1)
+        # This Cardlake is added to Claude by its own address, so both buttons
+        # open the Connect AI panel instead of keeping a second copy of the steps.
+        self.assertIn("openApiTokensModal(event.currentTarget, 'claude')", card)
+        self.assertIn("openApiTokensModal(event.currentTarget, 'chatgpt')", card)
+        self.assertNotIn("Add custom connector", card)
+        self.assertNotIn("claude.ai/directory", card)
+        self.assertIn("rememberDismissed(CONNECT_CARD_DISMISSED); card.remove();", card)
+        # Once connected, the button gives way to questions to try.
+        connected = card[card.index("whenAssistantConnects(card, () => {"):]
+        self.assertIn("card.querySelector('[data-connect-card-actions]').hidden = true;", connected)
+        self.assertIn("card.querySelector('[data-connect-card-prompts]').hidden = false;", connected)
+        self.assertIn(".cardle-connect-card{", source(VAULT_INDEX))
 
 
 if __name__ == "__main__":
