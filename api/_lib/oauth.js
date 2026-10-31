@@ -81,17 +81,18 @@ function isClaudeCodeClient(clientId, redirectUri) {
 
 // Gemini gives each person their own callback on Google's OAuth redirect host,
 // named after their Google account and the server's host with its dots as
-// underscores (cardlake.example becomes cardlake_example). Other Google
-// products put a Cloud project id under /r/, and those can't contain
-// underscores, so only Gemini can own a path of this shape. Only callbacks
-// named after this deployment's own host are accepted; how Gemini writes a
-// hyphen in a host isn't documented, so both forms count.
+// underscores (cardlake.example becomes cardlake_example). It registers six
+// at once: the live host and its -sandbox and -test twins, each under /r/
+// and /a/. Other Google products put a Cloud project id there, and those
+// can't contain underscores, so only Gemini can own a path of this shape.
+// Only callbacks named after this deployment's own host are accepted; how
+// Gemini writes a hyphen in a host isn't documented, so both forms count.
 const GEMINI_HOSTS = (() => {
   const host = new URL(ORIGIN).hostname.toLowerCase();
   return new Set([host.replace(/\./g, '_'), host.replace(/[^a-z0-9]/g, '_')]);
 })();
 function isGeminiRedirect(redirectUri) {
-  const match = /^https:\/\/oauth-redirect\.googleusercontent\.com\/r\/user_bound_custom-mcp-\d{1,40}-([a-z0-9_-]{1,253})$/.exec(String(redirectUri));
+  const match = /^https:\/\/oauth-redirect(?:-sandbox|-test)?\.googleusercontent\.com\/[ra]\/user_bound_custom-mcp-\d{1,40}-([a-z0-9_-]{1,253})$/.exec(String(redirectUri));
   return Boolean(match) && GEMINI_HOSTS.has(match[1]);
 }
 

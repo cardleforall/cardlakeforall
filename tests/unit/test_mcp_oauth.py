@@ -128,7 +128,11 @@ const oauth = require('./api/_lib/oauth');
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const gemini = 'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-108197236448847442911-notes_example';
 assert(oauth.authorizationMetadata().registration_endpoint === 'https://notes.example/oauth/register', 'metadata must advertise registration');
-const registered = oauth.registerClient({ redirect_uris: [gemini], client_name: 'Gemini', token_endpoint_auth_method: 'client_secret_basic' });
+// What Gemini really sends: six callbacks, on the live host and its sandbox
+// and test twins, under /r/ and /a/.
+const geminiAll = ['oauth-redirect-sandbox', 'oauth-redirect-test', 'oauth-redirect'].flatMap(host => ['r', 'a'].map(path => gemini.replace('oauth-redirect.', `${host}.`).replace('/r/', `/${path}/`)));
+const registered = oauth.registerClient({ redirect_uris: geminiAll, client_name: 'Google', response_types: ['code'], grant_types: ['authorization_code', 'refresh_token'], token_endpoint_auth_method: 'client_secret_basic' });
+assert(registered.redirect_uris.length === 6, 'registration dropped a Gemini callback');
 assert(registered.client_id === oauth.GEMINI_CLIENT_ID, 'Gemini got the wrong client id');
 assert(registered.token_endpoint_auth_method === 'none' && !('client_secret' in registered), 'registration issued a secret');
 const challenge = crypto.createHash('sha256').update('a'.repeat(43)).digest('base64url');
@@ -140,6 +144,7 @@ assert(request.clientId === oauth.GEMINI_CLIENT_ID, 'Gemini authorization was re
 assert(oauth.clientDisplayName(oauth.GEMINI_CLIENT_ID) === 'Gemini', 'wrong consent name for Gemini');
 for (const uri of [
   'https://oauth-redirect.googleusercontent.com/r/my-gcp-project',
+  gemini.replace('oauth-redirect.', 'oauth-redirect-evil.'), gemini.replace('/r/', '/b/'), gemini.replace('/r/', '/r/a/'),
   gemini.replace('notes_example', 'other_example'),
   'https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-1081972-evil_example',
   `${gemini}?next=https://evil.example`, `${gemini}/more`, gemini.replace('https:', 'http:'),
