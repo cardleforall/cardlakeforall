@@ -425,10 +425,13 @@ For a thin feed: one tap adds five fresh cards.
 | ChatGPT | Settings → Connectors (Developer mode) → add the same URL → same sign-in. No token. |
 | Claude Code, Gemini, scripts, others | Generate a **personal access token** in the Connect AI panel, then pass it as `Authorization: Bearer …`. |
 
-**Connect AI panel** (button next to your name): explains the above; label and
-generate a token (shown **once**, with Copy buttons for the token and the server
-address); list of tokens with created and last-used dates; **Revoke** (inline
-confirm, effective immediately).
+**Connect AI panel** (button next to your name) opens on a choice: **Claude** or
+**ChatGPT**, each showing this Cardlake's address with a Copy button and that
+assistant's steps, plus a Back button. Once an assistant connects, it shows
+example questions to try. A small link, "Claude Code, Gemini or a script?",
+leads to tokens: label and generate a token (shown **once**, with Copy buttons
+for the token and the server address); list of tokens with created and
+last-used dates; **Revoke** (inline confirm, effective immediately).
 
 ### 10.2 What an assistant can do
 

@@ -122,8 +122,9 @@
       setTimeout(() => { if (button.isConnected) button.textContent = 'Copy'; }, 2500);
     };
   }
-  // "Waiting for your assistant to connect…", for someone who hasn't
-  // connected one yet. Already-connected accounts see no status: we
+  // "Waiting for your assistant to connect…", then example questions once it
+  // has, for someone who hasn't connected one yet. Already-connected
+  // accounts see no status: we
   // can't tell which assistant is connected, so "Connected" could mislead
   // someone adding a second one.
   async function watchForAssistantConnection(modal) {
@@ -134,6 +135,7 @@
     whenAssistantConnects(modal, () => {
       status.classList.add('connected');
       status.textContent = 'Connected. Your assistant can see your feed.';
+      modal.querySelector('[data-connect-prompts]').hidden = false;
     });
   }
   // Checks every few seconds, for up to ten minutes, until an assistant
@@ -166,15 +168,21 @@
   }
   // opener gets focus back when the dialog closes (Safari doesn't focus a
   // clicked button, so it's passed in rather than read from activeElement).
-  // client picks the assistant it opens on.
-  function openApiTokensModal(opener, client = 'claude') {
+  // view is where it opens: 'pick' (the choice of assistant) or one
+  // assistant's steps.
+  function openApiTokensModal(opener, view = 'pick') {
     document.getElementById('cardle-tokens-modal')?.remove();
     const modal = document.createElement('div');
     modal.id = 'cardle-tokens-modal';
     modal.className = 'vh-modal';
-    // Pick an assistant, copy the address, follow its steps. Tokens get their
-    // own tab because only Claude Code, Gemini and scripts need one.
-    modal.innerHTML = `<div class="vh-modal-card cardle-tokens-card" role="dialog" aria-modal="true" aria-labelledby="cardle-tokens-title"><h3 id="cardle-tokens-title">Connect an AI assistant</h3><p>Connect once, then ask your assistant what's on your plate, or tell it to add, snooze or tick things off.</p><div class="cardle-connect-tabs" role="group" aria-label="Choose your assistant"><button type="button" data-connect-client="claude" aria-pressed="true">Claude</button><button type="button" data-connect-client="chatgpt" aria-pressed="false">ChatGPT</button><button type="button" data-connect-client="token" aria-pressed="false">Claude Code &amp; others</button></div><div data-connect-oauth><div class="cardle-token-address"><code data-server-address>${escapeHtml(window.CardleConnectAI.SERVER_ADDRESS)}</code><button type="button" data-copy-server>Copy</button></div><div class="cardle-connect-steps" data-connect-steps></div><p class="cardle-connect-status" data-connect-status role="status" hidden></p><h4>Then try asking</h4><div class="cardle-connect-prompts">${window.CardleConnectAI.promptsHtml(window.CardleConnectAI.EXAMPLE_PROMPTS.slice(0, 3))}</div></div><div data-connect-token hidden><p>Claude Code, Gemini and scripts connect with a personal access token and the address <code>${escapeHtml(window.CardleConnectAI.SERVER_ADDRESS)}</code>. Each token is shown only once, so copy it somewhere safe right away. <a href="/mcp-setup.html" target="_blank" rel="noopener noreferrer">Setup guide</a></p><div class="cardle-token-new"><input type="text" aria-label="Token label" placeholder="Label, e.g. Claude Code" maxlength="100"><button type="submit" class="vh-add" data-generate>Generate token</button></div><p class="cardle-token-error" data-token-error role="alert"></p><div class="cardle-token-reveal" data-token-reveal hidden></div><ul class="cardle-token-list" data-token-list></ul><details class="cardle-sync-token" data-sync-token hidden><summary>Advanced: sync token</summary><p>For scripts and Cardlake's system tests, not for assistants. It works in a separate shared space, never in your own cards. Your Cardlake made it; keep it private.</p><code data-sync-token-value></code><button type="button" data-copy-sync>Copy</button></details></div><div><button type="button" class="vh-cancel" data-close>Close</button></div></div>`;
+    // Pick Claude or ChatGPT first, then copy this Cardlake's address and
+    // follow that assistant's steps. Tokens sit behind a small link because
+    // only Claude Code, Gemini and scripts need one. Example questions wait
+    // until the assistant connects.
+    const { SERVER_ADDRESS, EXAMPLE_PROMPTS, stepsHtml, promptsHtml } = window.CardleConnectAI;
+    const addressHtml = `<div class="cardle-token-address"><code data-server-address>${escapeHtml(SERVER_ADDRESS)}</code><button type="button" data-copy-server>Copy</button></div>`;
+    const ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+    modal.innerHTML = `<div class="vh-modal-card cardle-tokens-card" role="dialog" aria-modal="true" aria-labelledby="cardle-tokens-title"><h3 id="cardle-tokens-title" tabindex="-1">Connect your AI</h3><div data-connect-view="pick"><p>Then ask it what's on your plate, or tell it to add, snooze or tick things off.</p><div class="cardle-connect-picks"><button type="button" class="cardle-connect-pick" data-pick="claude"><span><b>Claude</b><small>Paste one link</small></span>${ARROW}</button><button type="button" class="cardle-connect-pick" data-pick="chatgpt"><span><b>ChatGPT</b><small>Paste one link</small></span>${ARROW}</button></div><button type="button" class="cardle-connect-other" data-pick="token">Claude Code, Gemini or a script?</button></div><div data-connect-view="claude" hidden>${addressHtml}<div class="cardle-connect-steps">${stepsHtml('claude')}</div></div><div data-connect-view="chatgpt" hidden>${addressHtml}<div class="cardle-connect-steps">${stepsHtml('chatgpt')}</div></div><div data-connect-view="token" hidden><p>Claude Code, Gemini and scripts connect with a personal access token and the address <code>${escapeHtml(SERVER_ADDRESS)}</code>. Each token is shown only once, so copy it somewhere safe right away. <a href="/mcp-setup.html" target="_blank" rel="noopener noreferrer">Setup guide</a></p><div class="cardle-token-new"><input type="text" aria-label="Token label" placeholder="Label, e.g. Claude Code" maxlength="100"><button type="submit" class="vh-add" data-generate>Generate token</button></div><p class="cardle-token-error" data-token-error role="alert"></p><div class="cardle-token-reveal" data-token-reveal hidden></div><ul class="cardle-token-list" data-token-list></ul><details class="cardle-sync-token" data-sync-token hidden><summary>Advanced: sync token</summary><p>For scripts and Cardlake's system tests, not for assistants. It works in a separate shared space, never in your own cards. Your Cardlake made it; keep it private.</p><code data-sync-token-value></code><button type="button" data-copy-sync>Copy</button></details></div><div data-connect-progress hidden><p class="cardle-connect-status" data-connect-status role="status" hidden></p><div data-connect-prompts hidden><h4>Now try asking</h4><div class="cardle-connect-prompts">${promptsHtml(EXAMPLE_PROMPTS.slice(0, 3))}</div></div></div><div class="cardle-connect-actions"><button type="button" class="vh-cancel" data-back hidden>Back</button><button type="button" class="vh-cancel" data-close>Close</button></div></div>`;
     document.body.appendChild(modal);
     const card = modal.querySelector('[role="dialog"]');
     const close = () => { modal.remove(); opener?.focus(); };
@@ -189,17 +197,20 @@
     });
     modal.onclick = e => { if (e.target === modal) close(); };
     modal.querySelector('[data-close]').onclick = close;
-    wireCopy(modal.querySelector('[data-copy-server]'), modal.querySelector('[data-server-address]'));
-    const tabs = [...modal.querySelectorAll('[data-connect-client]')];
-    const showClient = client => {
-      tabs.forEach(tab => tab.setAttribute('aria-pressed', String(tab.dataset.connectClient === client)));
-      modal.querySelector('[data-connect-oauth]').hidden = client === 'token';
-      modal.querySelector('[data-connect-token]').hidden = client !== 'token';
-      if (client !== 'token') modal.querySelector('[data-connect-steps]').innerHTML = window.CardleConnectAI.stepsHtml(client);
+    modal.querySelectorAll('.cardle-token-address').forEach(row => wireCopy(row.querySelector('[data-copy-server]'), row.querySelector('[data-server-address]')));
+    const back = modal.querySelector('[data-back]');
+    // The waiting status and, once connected, the example questions belong
+    // to the Claude and ChatGPT steps only.
+    const showView = (view, focus) => {
+      modal.querySelectorAll('[data-connect-view]').forEach(el => { el.hidden = el.dataset.connectView !== view; });
+      modal.querySelector('[data-connect-progress]').hidden = view !== 'claude' && view !== 'chatgpt';
+      back.hidden = view === 'pick';
+      focus?.focus();
     };
-    tabs.forEach(tab => { tab.onclick = () => showClient(tab.dataset.connectClient); });
-    showClient(client);
-    tabs.find(tab => tab.dataset.connectClient === client).focus();
+    const firstControl = view => modal.querySelector(`[data-connect-view="${view}"]`).querySelector('button, input');
+    modal.querySelectorAll('[data-pick]').forEach(pick => pick.addEventListener('click', () => showView(pick.dataset.pick, firstControl(pick.dataset.pick))));
+    back.onclick = () => showView('pick', modal.querySelector('[data-pick="claude"]'));
+    showView(view, view === 'pick' ? modal.querySelector('[data-pick="claude"]') : firstControl(view));
     watchForAssistantConnection(modal);
     showSyncToken(modal);
     modal.querySelector('[data-generate]').addEventListener('click', async () => {
@@ -284,7 +295,8 @@
   // One main button at a time: "Add to Claude" until the connection is
   // confirmed, then example questions to try. "Not now" hides it for good;
   // Connect AI in the header stays. This Cardlake is added to Claude by its
-  // own address, so the button opens Connect AI's Claude steps.
+  // own address, so the button opens Connect AI's Claude steps; the other
+  // link opens its choice of assistant.
   function showConnectCard(personaPrompts) {
     const main = document.querySelector('.main');
     const { EXAMPLE_PROMPTS } = window.CardleConnectAI || {};
@@ -316,7 +328,7 @@
       });
     };
     card.querySelector('[data-add-to-claude]').addEventListener('click', event => { waitForConnection(); openApiTokensModal(event.currentTarget, 'claude'); });
-    card.querySelector('[data-connect-other]').addEventListener('click', event => { waitForConnection(); openApiTokensModal(event.currentTarget, 'chatgpt'); });
+    card.querySelector('[data-connect-other]').addEventListener('click', event => { waitForConnection(); openApiTokensModal(event.currentTarget); });
     card.querySelectorAll('[data-copy-prompt]').forEach(button => button.addEventListener('click', async () => {
       const original = button.innerHTML;
       try { await navigator.clipboard.writeText(button.dataset.copyPrompt); button.textContent = 'Copied. Paste it into your assistant'; }

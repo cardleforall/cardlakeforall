@@ -50,7 +50,7 @@ Assistants you connected keep working; remove them under **Connect AI**.
 
 Scripts and the system tests (`tests/README.md`) use the sync token. If
 you didn't set `SYNC_TOKEN` in Vercel, your Cardlake generated one; you find
-it under **Connect AI**, **Claude Code & others**, **Advanced: sync token**.
+it under **Connect AI**, **Claude Code, Gemini or a script?**, **Advanced: sync token**.
 It works in a separate shared space, never in your own cards. A token set
 in Vercel is never shown in the app.
 

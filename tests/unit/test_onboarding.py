@@ -437,9 +437,10 @@ class FeedConnectCardTests(unittest.TestCase):
         self.assertIn('class="cardle-connect-card-primary"', card)
         self.assertEqual(card.count("cardle-connect-card-primary"), 1)
         # This Cardlake is added to Claude by its own address, so both buttons
-        # open the Connect AI panel instead of keeping a second copy of the steps.
+        # open the Connect AI panel instead of keeping a second copy of the
+        # steps: Claude's steps, or the choice of assistant.
         self.assertIn("openApiTokensModal(event.currentTarget, 'claude')", card)
-        self.assertIn("openApiTokensModal(event.currentTarget, 'chatgpt')", card)
+        self.assertIn("openApiTokensModal(event.currentTarget); });", card)
         self.assertNotIn("Add custom connector", card)
         self.assertNotIn("claude.ai/directory", card)
         self.assertIn("rememberDismissed(CONNECT_CARD_DISMISSED); card.remove();", card)

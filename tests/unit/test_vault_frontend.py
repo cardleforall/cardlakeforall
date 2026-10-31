@@ -448,7 +448,7 @@ setImmediate(() => process.stdout.write(JSON.stringify({ calls, feed: state.card
     def test_assistant_panel_is_called_connect_ai_everywhere_users_read_it(self):
         # "Ask AI" read like a chat feature inside Cardlake; the panel is where
         # assistants get connected. Every user-facing mention must agree.
-        self.assertIn('<h3 id="cardle-tokens-title">Connect an AI assistant</h3>', source(VAULT_JS))
+        self.assertIn('<h3 id="cardle-tokens-title" tabindex="-1">Connect your AI</h3>', source(VAULT_JS))
         user_facing = [*sorted((ROOT / "public").rglob("*.html")), *sorted((ROOT / "public").rglob("*.js")),
                        ROOT / "docs" / "MCP_SERVER.md"]
         stale = [str(path.relative_to(ROOT)) for path in user_facing if "Ask AI" in source(path)]
@@ -1046,10 +1046,10 @@ class UxFixesTests(unittest.TestCase):
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
         self.assertIn('role="dialog" aria-modal="true" aria-labelledby="cardle-tokens-title"', modal)
-        self.assertIn('<h3 id="cardle-tokens-title">', modal)
+        self.assertIn('<h3 id="cardle-tokens-title" tabindex="-1">', modal)
         self.assertIn('aria-label="Token label"', modal)
         # Focus moves into the dialog, stays there, and goes back to the button.
-        self.assertIn("tabs.find(tab => tab.dataset.connectClient === client).focus();", modal)
+        self.assertIn("showView(view, view === 'pick' ? modal.querySelector('[data-pick=\"claude\"]') : firstControl(view));", modal)
         self.assertIn("event.key === 'Escape'", modal)
         self.assertIn("event.key !== 'Tab'", modal)
         self.assertIn("opener?.focus()", modal)
@@ -1664,30 +1664,81 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         for path in (VAULT_INDEX, ROOT / "public" / "vault" / "assets" / "learnings.css"):
             self.assertNotIn("#7559d9", source(path).lower(), path.name)
 
-    def test_connect_ai_leads_with_the_address_claude_and_chatgpt_need(self):
-        modal = js_block(source(VAULT_JS), "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
-        self.assertIn('<button type="button" data-connect-client="claude" aria-pressed="true">Claude</button>', modal)
-        self.assertIn("<code data-server-address>${escapeHtml(window.CardleConnectAI.SERVER_ADDRESS)}</code>", modal)
-        self.assertLess(modal.index("data-server-address"), modal.index('class="cardle-token-new"'))
-        self.assertIn("wireCopy(modal.querySelector('[data-copy-server]'), modal.querySelector('[data-server-address]'));", modal)
-
-    def test_connect_ai_picks_an_assistant_and_watches_for_the_connection(self):
-        # Pick an assistant, copy the address, follow that assistant's steps
-        # from connect-ai.js, watch for the connection. Tokens sit behind
-        # their own tab.
+    def test_connect_ai_starts_with_a_choice_of_assistant(self):
+        # Claude comes first, then ChatGPT, then the small link for tokens.
+        # Both assistants are added by this Cardlake's own address, shown with
+        # their steps; nothing points at a directory listing.
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
-        for client in ("claude", "chatgpt", "token"):
-            self.assertIn(f'data-connect-client="{client}"', modal)
-        self.assertIn("window.CardleConnectAI.stepsHtml(client)", modal)
-        self.assertIn("window.CardleConnectAI.promptsHtml(", modal)
-        self.assertIn("function openApiTokensModal(opener, client = 'claude') {", js)
-        self.assertIn("showClient(client);", modal)
-        self.assertLess(modal.index("data-connect-oauth"), modal.index("data-connect-token hidden"))
-        self.assertLess(modal.index("data-connect-token hidden"), modal.index('class="cardle-token-new"'))
+        self.assertIn('<button type="button" class="cardle-connect-pick" data-pick="claude">', modal)
+        self.assertLess(modal.index('data-pick="claude"'), modal.index('data-pick="chatgpt"'))
+        self.assertLess(modal.index('data-pick="chatgpt"'), modal.index('data-pick="token"'))
+        self.assertIn("function openApiTokensModal(opener, view = 'pick') {", js)
+        self.assertIn("<code data-server-address>${escapeHtml(SERVER_ADDRESS)}</code>", modal)
+        self.assertIn('<div data-connect-view="claude" hidden>${addressHtml}', modal)
+        self.assertIn('<div data-connect-view="chatgpt" hidden>${addressHtml}', modal)
+        self.assertNotIn("claude.ai/directory", modal)
+        self.assertIn("modal.querySelectorAll('.cardle-token-address').forEach(row => wireCopy(row.querySelector('[data-copy-server]'), row.querySelector('[data-server-address]')));", modal)
+
+    def test_connect_ai_steps_through_one_choice_and_watches_for_the_connection(self):
+        js = source(VAULT_JS)
+        modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
+        markup = modal[modal.index("modal.innerHTML = `"):modal.index("document.body.appendChild(modal);")]
+        view_names = ("pick", "claude", "chatgpt", "token")
+        start = modal.index("const showView = (view, focus) => {")
+        functions = modal[start:modal.index("    showView(view, ", start)]
+        script = r"""
+          const assert = require('node:assert/strict');
+          const vm = require('node:vm');
+          const make = attrs => ({ hidden: false, dataset: {}, focused: 0, focus() { this.focused += 1; }, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; }, querySelector: () => null, ...attrs });
+          const firsts = {};
+          const views = Object.fromEntries(VIEWS.map(name => [name, make({ dataset: { connectView: name }, querySelector: () => (firsts[name] = firsts[name] || make({})) })]));
+          const picks = ['claude', 'chatgpt', 'token'].map(name => make({ dataset: { pick: name } }));
+          const back = make({}), progress = make({});
+          const modal = {
+            querySelectorAll: selector => (selector === '[data-connect-view]' ? Object.values(views) : selector === '[data-pick]' ? picks : []),
+            querySelector: selector => ({ '[data-connect-progress]': progress, '[data-pick="claude"]': picks[0] })[selector]
+              || views[(selector.match(/data-connect-view="(\w+)"/) || [])[1]],
+          };
+          const context = { modal, back };
+          vm.createContext(context);
+          vm.runInContext(FUNCTIONS + '; this.showView = showView;', context);
+          const visible = () => VIEWS.filter(name => !views[name].hidden);
+          context.showView('pick');
+          assert.deepEqual(visible(), ['pick']);
+          assert.equal(progress.hidden, true, 'no waiting status before a choice');
+          assert.equal(back.hidden, true);
+          picks[0].listeners.click();
+          assert.deepEqual(visible(), ['claude'], 'clicking Claude shows the address and its steps');
+          assert.equal(progress.hidden, false, 'Claude shows the waiting status');
+          assert.equal(back.hidden, false);
+          assert.equal(firsts.claude.focused, 1, 'focus lands on the Copy button');
+          back.onclick();
+          assert.deepEqual(visible(), ['pick']);
+          assert.equal(picks[0].focused, 1);
+          picks[1].listeners.click();
+          assert.deepEqual(visible(), ['chatgpt']);
+          assert.equal(progress.hidden, false);
+          picks[2].listeners.click();
+          assert.deepEqual(visible(), ['token']);
+          assert.equal(progress.hidden, true, 'tokens have nothing to wait for');
+        """.replace("VIEWS", json.dumps(list(view_names))).replace("FUNCTIONS", json.dumps(functions))
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in view_names:
+            self.assertIn(f'data-connect-view="{name}"', markup)
+        self.assertNotIn("cardle-connect-tabs", markup)
+        # The steps still come from connect-ai.js, so they can't drift from
+        # the setup guide; example questions wait for the connection.
+        self.assertIn("${stepsHtml('claude')}", markup)
+        self.assertIn("${stepsHtml('chatgpt')}", markup)
+        self.assertIn('<div data-connect-prompts hidden><h4>Now try asking</h4>', markup)
+        self.assertLess(markup.index('data-connect-view="token" hidden'), markup.index('class="cardle-token-new"'))
+        self.assertLess(markup.index('class="cardle-token-new"'), markup.index("Advanced: sync token"))
         self.assertIn("watchForAssistantConnection(modal);", modal)
         watch = js_block(js, "async function watchForAssistantConnection(modal) {", "\n  // opener gets focus back")
         self.assertIn("api('/api/onboarding')", watch)
+        self.assertIn("modal.querySelector('[data-connect-prompts]').hidden = false;", watch)
         # Polling stops once the dialog closes.
         self.assertIn("whenAssistantConnects(modal, () => {", watch)
         self.assertIn("if (!element.isConnected || Date.now() > stopAt) return clearInterval(timer);", watch)
