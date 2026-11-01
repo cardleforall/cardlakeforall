@@ -79,6 +79,38 @@ class VaultFrontendTests(unittest.TestCase):
         self.assertIn("feedAction(card, 'remind_later', days)", change)
         self.assertIn("snoozeDaysInputHtml(snoozeDaysLeft(card))", change)
 
+    def test_a_blocked_save_says_why_in_the_forms_error_area(self):
+        js = source(AURORA_FEED_JS)
+        # The forms check themselves, so the browser's easily missed bubble
+        # isn't the only sign that Save was refused.
+        self.assertIn("<form data-capture-form novalidate>", js)
+        self.assertIn("<form data-edit-form novalidate>", js)
+        self.assertIn("<form data-snooze-edit novalidate><p class=\"aurora-capture-error\" data-snooze-error role=\"alert\"></p>", js)
+        self.assertNotIn("reportValidity()", js)
+        self.assertIn("if (blockInvalidSave(form, type, node.querySelector('[data-capture-error]'))) return;", js)
+        self.assertIn("if (blockInvalidSave(form, card.type, node.querySelector('[data-edit-error]'))) return;", js)
+        self.assertIn("return 'Notes are required for a Misc card.';", js)
+        self.assertIn("return `${label} is required.`;", js)
+        change = js.split("function changeSnooze(card) {", 1)[1].split("\n  }", 1)[0]
+        self.assertIn("if (!days) { setError(SNOOZE_DAYS_ERROR); input.focus(); return; }", change)
+        self.assertNotIn("toast(", change.split("const done =", 1)[0])
+
+    def test_every_attachment_has_a_way_to_open_it(self):
+        js = source(AURORA_FEED_JS)
+        listing = js.split("function attachmentListHtml(card, { inFeed = false } = {}) {", 1)[1].split("\n  }", 1)[0]
+        # Only the attachment already previewed inline is left out.
+        self.assertIn("inline?.attachment && inline.url === attachment.url", listing)
+        self.assertIn('class="aurora-attachment-link" href="${esc(parsed.href)}"', listing)
+        self.assertIn("${attachmentListHtml(card, { inFeed: true })}", js.split("function cardHtml(card, index) {", 1)[1].split("\n  function ", 1)[0])
+        self.assertIn("${mediaHtml(card)}${attachmentListHtml(card)}", js.split("function detail(card) {", 1)[1])
+
+    def test_a_snooze_counts_as_reviewed_straight_away(self):
+        remove = js_block(source(AURORA_FEED_JS), "function removeAfterFeedAction(", "\n  function bringBack")
+        self.assertIn("const reviewed = action === 'remind_later' && state.view === 'active' && !!state.stats.review;", remove)
+        self.assertIn("if (reviewed) bumpReviewed(1);", remove)
+        # Undo takes it back.
+        self.assertIn("if (reviewed) bumpReviewed(-1);", remove)
+
     def test_completing_a_reminder_marks_it_done_instead_of_deleting_it(self):
         js = source(AURORA_FEED_JS)
         self.assertIn("function dismissCard(card) {", js)

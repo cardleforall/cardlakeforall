@@ -294,6 +294,26 @@
     const context = esc(media.source.name || media.parsed.pathname.split('/').filter(Boolean).pop() || media.parsed.hostname);
     return `<a class="aurora-media-indicator aurora-media-indicator-${media.kind}" href="${esc(media.parsed.href)}" target="_blank" rel="noopener noreferrer" data-interactive aria-label="${esc(media.label)}: ${context}"><span aria-hidden="true">${media.icon}</span>${esc(media.label)}</a>`;
   }
+  // Every attachment gets a row naming the file, with a link to open it.
+  // The one image or video previewed inline (mediaSource) is left out, so
+  // only files that would otherwise be unreachable are listed.
+  const fileSize = bytes => !Number.isFinite(bytes) || bytes <= 0 ? '' : bytes < 1024 ? `${bytes} B` : formatBytes(bytes);
+  const fileKind = attachment => {
+    const ext = String(attachment.name || '').match(/\.([a-z0-9]{1,5})$/i);
+    return ext ? ext[1].toUpperCase() : String(attachment.mime_type || 'File').split('/').pop().toUpperCase();
+  };
+  function attachmentListHtml(card, { inFeed = false } = {}) {
+    const attachments = Array.isArray(card.metadata?.attachments) ? card.metadata.attachments : [];
+    const inline = mediaSource(card);
+    const rows = attachments.map(attachment => {
+      const parsed = safeMediaUrl(attachment.url);
+      if (!parsed || (inline?.attachment && inline.url === attachment.url)) return '';
+      const name = esc(attachment.name || 'Attachment');
+      const meta = [fileKind(attachment), fileSize(Number(attachment.byte_size))].filter(Boolean).join(', ');
+      return `<li><a class="aurora-attachment-link" href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer" data-interactive aria-label="Open attachment ${name}${meta ? ` (${esc(meta)})` : ''} in a new tab"><span aria-hidden="true">📎</span><span class="aurora-attachment-name">${name}</span>${meta ? `<small>${esc(meta)}</small>` : ''}</a></li>`;
+    }).join('');
+    return rows ? `<ul class="aurora-attachments${inFeed ? ' aurora-attachments-feed' : ''}" aria-label="Attachments">${rows}</ul>` : '';
+  }
   // ---- Card state (option A) ----------------------------------------------
   // Motion that carries information: a reminder's ring drains toward its due
   // time and pulses once it's due today or overdue, a work checklist's bar
@@ -425,6 +445,7 @@
         ${issueMetaHtml(card)}
         ${media}
         ${mediaIndicator}
+        ${attachmentListHtml(card, { inFeed: true })}
         ${actionButtonsHtml(card)}
       </div>
     </article>`;
@@ -713,6 +734,7 @@
   // How long a snooze can last, as api/feed.js allows (MAX_SNOOZE_DAYS).
   const MAX_SNOOZE_DAYS = 365;
   const snoozeDaysInputHtml = (value = 1) => `<input type="number" name="snooze_days" min="1" max="${MAX_SNOOZE_DAYS}" step="1" value="${value}" inputmode="numeric" required>`;
+  const SNOOZE_DAYS_ERROR = `Enter a whole number of days from 1 to ${MAX_SNOOZE_DAYS}.`;
   // A whole number of days the server will accept, or null.
   function snoozeDaysFrom(input) {
     const days = Number(input.value);
@@ -722,18 +744,21 @@
   const snoozeDaysLeft = card => Math.max(1, Math.ceil((new Date(card.remind_later_until) - Date.now()) / 86400e3));
   // Snoozed view: set how many days from now a snoozed card comes back.
   function changeSnooze(card) {
-    const node = modal(`<h2>When should it come back?</h2><form data-snooze-edit><label class="aurora-capture-label">Days from now (1 to ${MAX_SNOOZE_DAYS})${snoozeDaysInputHtml(snoozeDaysLeft(card))}</label><div class="aurora-modal-actions"><button type="submit" class="aurora-new">Save</button></div></form>`, 'aurora-capture');
+    const node = modal(`<h2>When should it come back?</h2><form data-snooze-edit novalidate><p class="aurora-capture-error" data-snooze-error role="alert"></p><label class="aurora-capture-label">Days from now (1 to ${MAX_SNOOZE_DAYS})${snoozeDaysInputHtml(snoozeDaysLeft(card))}</label><div class="aurora-modal-actions"><button type="submit" class="aurora-new">Save</button></div></form>`, 'aurora-capture');
     const form = node.querySelector('[data-snooze-edit]');
     const input = form.elements.snooze_days;
+    const setError = message => showFormError(node.querySelector('[data-snooze-error]'), input, message);
+    input.addEventListener('input', () => setError(''));
     requestAnimationFrame(() => input.select());
     form.onsubmit = event => {
       event.preventDefault();
       const days = snoozeDaysFrom(input);
-      if (!days) { toast(`Choose 1 to ${MAX_SNOOZE_DAYS} days.`); return; }
+      if (!days) { setError(SNOOZE_DAYS_ERROR); input.focus(); return; }
+      setError('');
       const save = () => feedAction(card, 'remind_later', days);
       const done = () => { node.closeModal(); toast(`Back in ${days} day${days === 1 ? '' : 's'}`); load(false); };
       save().then(done).catch(err => {
-        if (err && err.status === 401) { V.showLogin(() => save().then(done).catch(() => toast('Could not update card'))); } else { toast(err?.message || 'Could not update card'); }
+        if (err && err.status === 401) { V.showLogin(() => save().then(done).catch(error => setError(error?.message || 'Could not update card.'))); } else { setError(err?.message || 'Could not update card. Please try again.'); }
       });
     };
   }
@@ -790,6 +815,11 @@
   }
   // `action` is 'remind_later' (for `days`, one if left out), 'dismiss'
   // (complete or delete, see dismissCard) or 'stop' (delete a recurring reminder).
+  function bumpReviewed(by) {
+    const progress = state.stats.review;
+    const reviewedToday = Math.max(0, Number(progress.reviewed_today || 0) + by);
+    state.stats.review = { ...progress, reviewed_today: reviewedToday, total_today: Math.max(Number(progress.total_today || 0), reviewedToday) };
+  }
   function removeAfterFeedAction(card, el, action, days) {
     flushPendingRemoval();
     const key = cardKey(card);
@@ -801,11 +831,16 @@
     const wasLiked = !!card.liked_at;
     // Snoozing or deleting a card also unpins it on the server, freeing its slot.
     const wasPinned = !!card.pinned_at;
+    // A snooze is what counts as reviewed (api/feed.js sets reviewed_at), so
+    // the "reviewed today" count moves now rather than on the next reload.
+    // The total already includes reviewed cards, so it stays put.
+    const reviewed = action === 'remind_later' && state.view === 'active' && !!state.stats.review;
     const run = () => (action === 'dismiss' ? dismissCard(card) : action === 'stop' ? feedAction(card, 'dismiss') : feedAction(card, action, days));
     state.cards = state.cards.filter(c => cardKey(c) !== key);
     if (statKey) state.stats[statKey] = Number(state.stats[statKey] || 0) + 1;
     if (wasLiked) state.stats.liked_cards = Math.max(0, Number(state.stats.liked_cards || 0) - 1);
     if (wasPinned) state.stats.pinned_cards = Math.max(0, pinnedCount() - 1);
+    if (reviewed) bumpReviewed(1);
     if (el) { el.classList.add('is-leaving'); setTimeout(render, 280); } else render();
     // Puts the card back where it was, leaving any other change since alone.
     const restore = () => {
@@ -813,6 +848,7 @@
       if (statKey) state.stats[statKey] = Math.max(0, Number(state.stats[statKey] || 0) - 1);
       if (wasLiked) state.stats.liked_cards = Number(state.stats.liked_cards || 0) + 1;
       if (wasPinned) state.stats.pinned_cards = pinnedCount() + 1;
+      if (reviewed) bumpReviewed(-1);
       render();
     };
     const commit = () => run().catch(err => {
@@ -1088,7 +1124,7 @@
   }
   function editCard(card) {
     const before = editValues(card);
-    const node = modal(`<h2>Edit card</h2><form data-edit-form><p class="aurora-capture-error" data-edit-error role="alert"></p><div data-capture-fields>${captureFields(card.type)}</div><button class="aurora-new">Save changes</button></form>`, 'aurora-capture');
+    const node = modal(`<h2>Edit card</h2><form data-edit-form novalidate><p class="aurora-capture-error" data-edit-error role="alert"></p><div data-capture-fields>${captureFields(card.type)}</div><button class="aurora-new">Save changes</button></form>`, 'aurora-capture');
     const fields = node.querySelector('[data-capture-fields]');
     // Attachments are added when a card is created.
     fields.querySelector('input[name="attachment"]')?.closest('label')?.remove();
@@ -1096,10 +1132,11 @@
     requestAnimationFrame(() => fields.querySelector('input, textarea')?.focus());
     const form = node.querySelector('[data-edit-form]');
     const setError = message => { node.querySelector('[data-edit-error]').textContent = message || ''; };
+    clearErrorOnFix(form, node.querySelector('[data-edit-error]'));
     form.onsubmit = async event => {
       event.preventDefault();
       setError('');
-      if (!form.reportValidity()) return;
+      if (blockInvalidSave(form, card.type, node.querySelector('[data-edit-error]'))) return;
       const changes = editChanges(card.type, before, captureValues(fields));
       if (!Object.keys(changes).length) { node.closeModal(); return; }
       const save = () => V.api(`${EDIT_ENDPOINT[card.type]}/${card.id}`, { method: 'PATCH', body: JSON.stringify(changes) });
@@ -1123,7 +1160,7 @@
     const pinLimitReached = !card.pinned_at && pinnedCount() >= maxPinned();
     const pinTitle = card.pinned_at ? 'Unpin' : pinLimitReached ? `Pin limit reached (${maxPinned()})` : 'Pin to top';
     const editButton = canEdit(card) ? `<button type="button" class="aurora-edit" data-detail-edit aria-label="Edit ${esc(titleOf(card))}">Edit</button>` : '';
-    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
+    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}${attachmentListHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
     // The detail view's actions take the same path as the card's own buttons,
     // so they get the same Undo (and the same retry after signing in again).
     const leave = (action, days) => {
@@ -1135,7 +1172,7 @@
     node.querySelector('[data-detail-remind]').onclick = () => {
       const input = node.querySelector('[name="snooze_days"]');
       const days = snoozeDaysFrom(input);
-      if (!days) { toast(`Choose 1 to ${MAX_SNOOZE_DAYS} days.`); input.focus(); return; }
+      if (!days) { toast(SNOOZE_DAYS_ERROR); input.focus(); return; }
       leave('remind_later', days);
     };
     const stop = node.querySelector('[data-detail-stop]');
@@ -1148,6 +1185,57 @@
   const quotaLimit = (key, fallback) => Number(state.stats?.quota?.[key]?.limit || fallback);
   const formatBytes = bytes => bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(bytes % (1024 * 1024) ? 1 : 0)} MB` : `${Math.ceil(bytes / 1024)} KB`;
   const ATTACHMENT_FIELD = () => `<label class="aurora-capture-label">Attach a file (optional, up to ${formatBytes(quotaLimit('file_size', 4 * 1024 * 1024))})<input name="attachment" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.json,.docx,.xlsx"><small>JPG, PNG, GIF, WebP, PDF, TXT, MD, JSON, DOCX or XLSX.</small></label>`;
+  // Why a form can't be saved, in words, for the form's error area: the
+  // browser's own bubble is easy to miss (or not shown at all) inside the
+  // dialog, which left a blocked save looking like nothing happened.
+  // Required text that is only spaces counts as missing, as the API sees it.
+  const FIELD_NAMES = { title: 'Title', section_title: 'Title', person: 'Person', url: 'URL', notes: 'Notes', items_text: 'Checklist', due_date: 'Due date', file: 'File', attachment: 'Attachment' };
+  function fieldLabel(field, type) {
+    if (field.name === 'content') return type === 'family' ? 'Update' : 'Notes';
+    return FIELD_NAMES[field.name] || 'This field';
+  }
+  function invalidFieldMessage(field, type) {
+    const label = fieldLabel(field, type), v = field.validity;
+    if (field.name === 'snooze_days') return SNOOZE_DAYS_ERROR;
+    if (v.valueMissing || (field.required && typeof field.value === 'string' && field.type !== 'file' && !field.value.trim())) {
+      if (field.type === 'file') return 'Choose a file to upload.';
+      if (field.name === 'content' && type === 'talking_point') return 'Notes are required for a Misc card.';
+      return `${label} is required.`;
+    }
+    if (v.typeMismatch && field.type === 'url') return 'Enter a full URL, starting with https://';
+    if (v.tooLong) return `${label} is too long: keep it to ${field.maxLength} characters.`;
+    if (v.badInput) return `${label} isn't valid.`;
+    return field.validationMessage || `${label} isn't valid.`;
+  }
+  // The first field that stops the form from saving, with its message; null if none.
+  function firstInvalidField(form, type) {
+    for (const field of form.querySelectorAll('input[name], textarea[name], select[name]')) {
+      const blank = field.required && field.type !== 'file' && typeof field.value === 'string' && !field.value.trim();
+      if (blank || !field.checkValidity()) return { field, message: invalidFieldMessage(field, type) };
+    }
+    return null;
+  }
+  // Shows (or clears) a form's error and marks the field it is about.
+  function showFormError(errorNode, field, message) {
+    if (errorNode) errorNode.textContent = message || '';
+    if (field) { if (message) field.setAttribute('aria-invalid', 'true'); else field.removeAttribute('aria-invalid'); }
+  }
+  // Typing into the field an error is about clears the error.
+  function clearErrorOnFix(form, errorNode) {
+    form.addEventListener('input', event => {
+      if (!event.target.hasAttribute?.('aria-invalid')) return;
+      showFormError(errorNode, event.target, '');
+    });
+  }
+  // Blocks the save when a field is invalid: says why and moves focus there.
+  function blockInvalidSave(form, type, errorNode) {
+    form.querySelectorAll('[aria-invalid]').forEach(field => field.removeAttribute('aria-invalid'));
+    const invalid = firstInvalidField(form, type);
+    if (!invalid) return false;
+    showFormError(errorNode, invalid.field, invalid.message);
+    invalid.field.focus();
+    return true;
+  }
   function captureFields(type) { const titleMax = quotaLimit('title', 200); const contentMax = quotaLimit('content', 50000); if (type === 'family') return `<label class="aurora-capture-label">Person<input name="person" required maxlength="${titleMax}"></label><label class="aurora-capture-label">Update<textarea name="content" required maxlength="${contentMax}"></textarea></label>${ATTACHMENT_FIELD()}`; if (type === 'talking_point') return `<label class="aurora-capture-label">Title<input name="section_title" required maxlength="${titleMax}"></label><label class="aurora-capture-label">Notes<textarea name="content" required maxlength="${contentMax}"></textarea></label>${ATTACHMENT_FIELD()}`; if (type === 'file') return '<label class="aurora-capture-label">File<input name="file" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.md,.json,.docx,.xlsx" required><small>JPG, PNG, GIF, WebP, PDF, TXT, MD, JSON, DOCX or XLSX.</small></label>'; return `<label class="aurora-capture-label">${type === 'bookmark' ? 'Title' : 'What do you want to remember?'}<input name="title" required maxlength="${titleMax}"></label>${type === 'bookmark' ? `<label class="aurora-capture-label">URL (optional)<input name="url" type="url"></label><label class="aurora-capture-label">Notes (optional)<textarea name="notes" maxlength="${contentMax}"></textarea></label>` : ''}${type === 'learning' ? `<label class="aurora-capture-label">URL (optional)<input name="url" type="url"></label><label class="aurora-capture-label">Notes (optional)<textarea name="notes" maxlength="${contentMax}" placeholder="Where it's from, why it's worth it"></textarea></label>` : ''}${type === 'work' ? `<label class="aurora-capture-label">Checklist (one item per line)<textarea name="items_text" maxlength="${contentMax}"></textarea></label>` : ''}${type === 'reminder' ? '<label class="aurora-capture-label">Due date (optional)<input name="due_date" type="date"></label><label class="aurora-capture-label">Repeats<select name="recurrence"><option value="">Never</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>' : ''}${ATTACHMENT_FIELD()}`; }
   // Switching card type re-renders the form; what was typed carries over to
   // fields of the same name. A Misc card's title is its section_title.
@@ -1196,7 +1284,7 @@
     const tiles = creatable.map(([key, x]) => `<button type="button" role="radio" aria-checked="${key === type}" data-capture-type="${key}" class="aurora-capture-type">${x[0]}<span>${x[1]}</span></button>`).join('');
     const smart = window.CardleSmartCapture;
     const quickBox = smart ? `<label class="aurora-capture-label aurora-quick-add">Quick add<textarea data-quick-add rows="2" maxlength="${quotaLimit('content', 50000)}" placeholder="Call mum every Sunday, paste a link, or list steps one per line"></textarea></label><p class="aurora-quick-hint" data-quick-hint aria-live="polite"></p>` : '';
-    const node = modal(`<h2>New card</h2>${quickBox}<small>TYPE</small><div class="aurora-type-grid" role="radiogroup" aria-label="Card type">${tiles}</div><form data-capture-form><p class="aurora-capture-error" data-capture-error role="alert"></p><div data-capture-fields>${captureFields(type)}</div><button class="aurora-new">Save card</button></form>${surpriseReady() ? `<div class="aurora-capture-deal"><span>Not sure what to add?</span>${dealButtonHtml()}</div>` : ''}`, 'aurora-capture', onClose);
+    const node = modal(`<h2>New card</h2>${quickBox}<small>TYPE</small><div class="aurora-type-grid" role="radiogroup" aria-label="Card type">${tiles}</div><form data-capture-form novalidate><p class="aurora-capture-error" data-capture-error role="alert"></p><div data-capture-fields>${captureFields(type)}</div><button class="aurora-new">Save card</button></form>${surpriseReady() ? `<div class="aurora-capture-deal"><span>Not sure what to add?</span>${dealButtonHtml()}</div>` : ''}`, 'aurora-capture', onClose);
     const setError = message => { node.querySelector('[data-capture-error]').textContent = message || ''; };
     const assertFileSize = file => { if (file?.size > quotaLimit('file_size', 4 * 1024 * 1024)) throw new Error(`Each file must be ${formatBytes(quotaLimit('file_size', 4 * 1024 * 1024))} or smaller.`); };
     const typed = { ...prefill };
@@ -1245,11 +1333,12 @@
     quick?.addEventListener('keydown', event => {
       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); node.querySelector('[data-capture-form]').requestSubmit(); }
     });
+    clearErrorOnFix(node.querySelector('[data-capture-form]'), node.querySelector('[data-capture-error]'));
     node.querySelector('[data-capture-form]').onsubmit = async event => {
       event.preventDefault();
       const form = event.currentTarget;
       setError('');
-      if (!form.reportValidity()) return;
+      if (blockInvalidSave(form, type, node.querySelector('[data-capture-error]'))) return;
       try {
         if (type === 'file') {
           const file = form.elements.file.files[0];

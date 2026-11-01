@@ -261,3 +261,11 @@
 .aurora-calendar-feed{margin:-3px 0 3px}
 .aurora-calendar-feed .aurora-calendar-link{color:var(--ink-faint);font:600 11.5px var(--font-body);display:inline-block;padding:5px 0}
 .aurora-calendar-feed .aurora-calendar-link:hover{color:var(--accent-2)}
+/* Attachments that aren't previewed inline: one row per file, linking to its download. */
+.aurora-attachments{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.aurora-attachment-link{display:flex;align-items:center;gap:8px;min-height:36px;padding:7px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink);font:600 13px var(--font-body);text-decoration:none}
+.aurora-attachment-link:hover{border-color:var(--accent-2)}
+.aurora-attachment-link:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+.aurora-attachment-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aurora-attachment-link small{color:var(--ink-faint);font-size:11.5px;font-weight:600;white-space:nowrap}
+.aurora-attachments-feed .aurora-attachment-link{min-height:30px;padding:4px 9px;font-size:12px}
