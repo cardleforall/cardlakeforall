@@ -84,7 +84,7 @@ api/
   auth/, kanban/, work/, … per-route files used only by local dev (excluded by .vercelignore)
 public/               setup, sign-in, welcome, privacy, support, MCP guide, vault shell + assets, fonts, icons
 schema-v2.sql         the whole schema, idempotent and additive
-scripts/              dev_server.js, build/validate vault shell, migrate helper, icon generator
+scripts/              dev_server.js, build/validate vault shell, deploy and update helpers, icon generator
 tests/unit/           offline tests (*.py) + PGlite scenario runners (*_scenarios.js)
 tests/sit/            system tests against a deployed URL
 docs/                 operating docs (ENVIRONMENT, MCP_SERVER, INTEGRATIONS, LIMITS, USER_EVENTS, ADMIN, …)
