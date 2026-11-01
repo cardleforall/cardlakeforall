@@ -79,6 +79,39 @@ class VaultFrontendTests(unittest.TestCase):
         self.assertIn("feedAction(card, 'remind_later', days)", change)
         self.assertIn("snoozeDaysInputHtml(snoozeDaysLeft(card))", change)
 
+    def test_a_work_checklist_reads_old_and_new_ticks_and_counts_them(self):
+        block = js_block(source(AURORA_FEED_JS), "  function workItems(card) {", "\n  // Saves the whole checklist")
+        result = run_node(block + """
+const card = { metadata: { items: [{ text: 'a', completed: true }, { text: 'b', done: true }, 'c', { text: '  ' }, { text: 'd', checked: false }] } };
+const items = workItems(card);
+const unticked = items.map((item, i) => (i === 1 ? { ...item, completed: false } : item));
+setWorkItems(card, unticked);
+process.stdout.write(JSON.stringify({ items, saved: card.metadata.items, subtitle: card.subtitle, done: card.metadata.done, total: card.metadata.total }));""")
+        # Blank lines are dropped; done and checked are folded into completed,
+        # so unticking an old "done" item really unticks it.
+        self.assertEqual(result["items"], [{"text": "a", "completed": True}, {"text": "b", "completed": True}, {"text": "c", "completed": False}, {"text": "d", "completed": False}])
+        self.assertEqual(result["saved"][1], {"text": "b", "completed": False})
+        self.assertEqual((result["subtitle"], result["done"], result["total"]), ("1/4 items done", 1, 4))
+
+    def test_work_checklist_items_can_be_ticked_from_the_detail_view(self):
+        js = source(AURORA_FEED_JS)
+        detail = js_block(js, "  function detail(card) {", "\n  // Ticking an item saves it straight away.")
+        self.assertIn("${checklistHtml(card)}", detail)
+        self.assertIn("bindChecklist(card, node, leave);", detail)
+        listing = js_block(js, "  function checklistHtml(card) {", "\n  function workProgressHtml")
+        self.assertIn('<input type="checkbox" data-checklist-item="${index}"', listing)
+        # Each tick saves the whole checklist through the existing endpoint.
+        save = js_block(js, "  function saveWorkItems(card, items) {", "\n  function checklistHtml")
+        self.assertIn("V.api(`/api/work/${card.id}`, { method: 'PATCH', body: JSON.stringify({ items }) })", save)
+        # The last tick finishes the card, which the server then keeps out of the feed.
+        self.assertIn("(card.type === 'work' && workComplete(card.metadata.items))", source(ROOT / "api" / "feed.js"))
+        bind = js_block(js, "  function bindChecklist(card, node, leave) {", "\n  const CAPTURE_SINGULAR_KEY")
+        self.assertIn("if (items.every(item => item.completed)) {", bind)
+        self.assertIn("leave('finish', undefined, () => saveWorkItems(card, items)", bind)
+        self.assertIn("if (action === 'finish') return 'All items done';", js)
+        # It goes through the same wait-for-Undo path as every other removal.
+        self.assertIn("const run = () => (send ? send() :", js_block(js, "function removeAfterFeedAction(", "\n  function bringBack"))
+
     def test_a_blocked_save_says_why_in_the_forms_error_area(self):
         js = source(AURORA_FEED_JS)
         # The forms check themselves, so the browser's easily missed bubble
@@ -121,12 +154,12 @@ class VaultFrontendTests(unittest.TestCase):
         self.assertIn("const repeats = card => card.type === 'reminder' && !!card.metadata?.recurrence;", js)
         # The card's Dismiss button, its swipe and the detail view's Dismiss
         # button all go through removeAfterFeedAction, and so all get Undo.
-        remove = js.split("function removeAfterFeedAction(card, el, action, days) {", 1)[1].split("\n  }", 1)[0]
-        self.assertIn("const run = () => (action === 'dismiss' ? dismissCard(card) : action === 'stop' ? feedAction(card, 'dismiss') : feedAction(card, action, days));", remove)
+        remove = js.split("function removeAfterFeedAction(card, el, action, days, send) {", 1)[1].split("\n  }", 1)[0]
+        self.assertIn("const run = () => (send ? send() : action === 'dismiss' ? dismissCard(card) : action === 'stop' ? feedAction(card, 'dismiss') : feedAction(card, action, days));", remove)
         self.assertNotIn("feedAction(card, action).catch", remove)
         detail = js.split("function detail(card) {", 1)[1].split("\n  const CAPTURE_SINGULAR_KEY", 1)[0]
         self.assertIn("node.querySelector('[data-detail-dismiss]').onclick = () => leave('dismiss');", detail)
-        self.assertIn("removeAfterFeedAction(card, el, action, days);", detail)
+        self.assertIn("removeAfterFeedAction(card, el, action, days, send);", detail)
         # Cards keep two buttons, but a recurring reminder's Delete reads
         # "Done" on the button, the swipe hint and in the detail view, since
         # it doesn't delete anything.

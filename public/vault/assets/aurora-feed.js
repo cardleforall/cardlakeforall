@@ -14,7 +14,7 @@
     { id: 'sandbox-reminder', type: 'reminder', created_at: new Date(Date.now() - 2 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Renew the domain registration', subtitle: 'Due tomorrow', body: "Auto-renew is off this cycle, so confirm before it lapses.", metadata: {} },
     { id: 'sandbox-learning', type: 'learning', created_at: new Date(Date.now() - 5 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: "Let's build GPT: from scratch, in code, spelled out.", subtitle: 'Video by Andrej Karpathy', body: 'A from-scratch walkthrough of how GPT actually works, one line of code at a time.', metadata: { url: 'https://www.youtube.com/watch?v=kCc8FmEb1nY' } },
     { id: 'sandbox-kanban', type: 'kanban', integration: 'github_issues', created_at: new Date(Date.now() - 8 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Redesign the onboarding flow', subtitle: 'acme/app#42, Assigned', body: '', metadata: { status: 'in_progress', source: 'github', external_url: 'https://github.com/', labels: ['ux', 'onboarding'] } },
-    { id: 'sandbox-work', type: 'work', created_at: new Date(Date.now() - 26 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Q3 roadmap review', subtitle: '3/5 items done', body: "Finish the capacity section before Friday's sync.", metadata: {} },
+    { id: 'sandbox-work', type: 'work', created_at: new Date(Date.now() - 26 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Q3 roadmap review', subtitle: '3/5 items done', body: "Finish the capacity section before Friday's sync.", metadata: { done: 3, total: 5, items: [{ text: 'Collect team updates', completed: true }, { text: 'Review last quarter', completed: true }, { text: 'Draft priorities', completed: true }, { text: 'Write the capacity section', completed: false }, { text: 'Send for review', completed: false }] } },
     { id: 'sandbox-family', type: 'family', created_at: new Date(Date.now() - 30 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Plan the weekend trip', subtitle: 'Family update', body: "Everyone's free Saturday. Pick a spot and book it.", metadata: {} },
     { id: 'sandbox-bookmark', type: 'bookmark', created_at: new Date(Date.now() - 50 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Why complex systems fail', subtitle: '', body: 'A short paper on cascading failure in engineered systems.', metadata: {} },
     { id: 'sandbox-talking', type: 'talking_point', created_at: new Date(Date.now() - 70 * 3600e3).toISOString(), dismissed_at: null, remind_later_until: null, liked_at: null, pinned_at: null, title: 'Ask about the migration timeline', subtitle: '', body: 'Bring it up before the next planning sync.', metadata: {} },
@@ -339,6 +339,44 @@
   function reminderRingHtml(timing) {
     if (!timing) return '';
     return `<svg class="cs-ring" viewBox="0 0 46 46" aria-hidden="true" focusable="false" style="--off:${Math.round(100 * (1 - timing.left))}"><rect class="cs-ring-track" x="1.5" y="1.5" width="43" height="43" rx="15" pathLength="100"/><rect class="cs-ring-fill" x="1.5" y="1.5" width="43" height="43" rx="15" pathLength="100"/></svg>`;
+  }
+  // A Work card's checklist as the API stores it, one { text, completed } per
+  // item. Older items may say done or checked instead; they're folded into
+  // completed so unticking one really unticks it (api/feed.js reads all three).
+  function workItems(card) {
+    const items = Array.isArray(card.metadata?.items) ? card.metadata.items : [];
+    return items.map(item => {
+      if (!item || typeof item !== 'object') return { text: String(item ?? '').trim(), completed: false };
+      const { done, checked, ...rest } = item;
+      return { ...rest, text: String(item.text ?? '').trim(), completed: !!(item.completed || done || checked) };
+    }).filter(item => item.text);
+  }
+  // Puts a checklist on the card, with the counts the header and bar show.
+  function setWorkItems(card, items) {
+    const done = items.filter(item => item.completed).length;
+    card.metadata = { ...card.metadata, items, done, total: items.length };
+    card.subtitle = `${done}/${items.length} items done`;
+  }
+  // Saves the whole checklist, as PATCH /api/work/:id expects. Saves for one
+  // card go one after another, so quick ticks reach the server in order.
+  const checklistSaves = new WeakMap();
+  function saveWorkItems(card, items) {
+    const send = () => {
+      if (!SANDBOX) return V.api(`/api/work/${card.id}`, { method: 'PATCH', body: JSON.stringify({ items }) });
+      const target = sandboxAllCards().find(c => c.id === card.id);
+      if (target) { setWorkItems(target, items); if (items.every(item => item.completed)) target.dismissed_at = new Date().toISOString(); }
+      return Promise.resolve({});
+    };
+    const saved = (checklistSaves.get(card) || Promise.resolve()).catch(() => {}).then(send);
+    checklistSaves.set(card, saved);
+    return saved;
+  }
+  function checklistHtml(card) {
+    if (card.type !== 'work') return '';
+    const items = workItems(card);
+    if (!items.length) return '';
+    const rows = items.map((item, index) => `<li><label class="aurora-checklist-item"><input type="checkbox" data-checklist-item="${index}"${item.completed ? ' checked' : ''}><span>${esc(item.text)}</span></label></li>`).join('');
+    return `<ul class="aurora-checklist" aria-label="Checklist">${rows}</ul><p class="aurora-capture-error" data-checklist-error role="alert"></p>`;
   }
   function workProgressHtml(card) {
     const m = card.metadata || {}, total = Number(m.total) || 0, done = Math.min(total, Number(m.done) || 0);
@@ -799,6 +837,7 @@
   function removalMessage(card, action, days) {
     if (action === 'remind_later') return days > 1 ? `Snoozed for ${days} days` : 'Snoozed until tomorrow';
     if (action === 'stop') return 'Reminder deleted';
+    if (action === 'finish') return 'All items done';
     if (repeats(card)) return 'Done until it’s next due';
     if (isGithubIssue(card)) return 'Removed from Cardlake';
     return card.type === 'reminder' ? 'Reminder completed' : 'Card deleted';
@@ -813,14 +852,16 @@
     document.body.appendChild(node);
     return node;
   }
-  // `action` is 'remind_later' (for `days`, one if left out), 'dismiss'
-  // (complete or delete, see dismissCard) or 'stop' (delete a recurring reminder).
   function bumpReviewed(by) {
     const progress = state.stats.review;
     const reviewedToday = Math.max(0, Number(progress.reviewed_today || 0) + by);
     state.stats.review = { ...progress, reviewed_today: reviewedToday, total_today: Math.max(Number(progress.total_today || 0), reviewedToday) };
   }
-  function removeAfterFeedAction(card, el, action, days) {
+  // `action` is 'remind_later' (for `days`, one if left out), 'dismiss'
+  // (complete or delete, see dismissCard), 'stop' (delete a recurring
+  // reminder) or 'finish' (a Work card's last item ticked), which brings its
+  // own request as `send`.
+  function removeAfterFeedAction(card, el, action, days, send) {
     flushPendingRemoval();
     const key = cardKey(card);
     const index = state.cards.findIndex(c => cardKey(c) === key);
@@ -835,7 +876,7 @@
     // the "reviewed today" count moves now rather than on the next reload.
     // The total already includes reviewed cards, so it stays put.
     const reviewed = action === 'remind_later' && state.view === 'active' && !!state.stats.review;
-    const run = () => (action === 'dismiss' ? dismissCard(card) : action === 'stop' ? feedAction(card, 'dismiss') : feedAction(card, action, days));
+    const run = () => (send ? send() : action === 'dismiss' ? dismissCard(card) : action === 'stop' ? feedAction(card, 'dismiss') : feedAction(card, action, days));
     state.cards = state.cards.filter(c => cardKey(c) !== key);
     if (statKey) state.stats[statKey] = Number(state.stats[statKey] || 0) + 1;
     if (wasLiked) state.stats.liked_cards = Math.max(0, Number(state.stats.liked_cards || 0) - 1);
@@ -1160,13 +1201,14 @@
     const pinLimitReached = !card.pinned_at && pinnedCount() >= maxPinned();
     const pinTitle = card.pinned_at ? 'Unpin' : pinLimitReached ? `Pin limit reached (${maxPinned()})` : 'Pin to top';
     const editButton = canEdit(card) ? `<button type="button" class="aurora-edit" data-detail-edit aria-label="Edit ${esc(titleOf(card))}">Edit</button>` : '';
-    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}${attachmentListHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
+    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small data-detail-subtitle>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${checklistHtml(card)}${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}${attachmentListHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
     // The detail view's actions take the same path as the card's own buttons,
     // so they get the same Undo (and the same retry after signing in again).
-    const leave = (action, days) => {
-      node.closeModal();
+    const leave = (action, days, send) => {
+      // A finished checklist leaves after a pause, by which time the dialog may be closed.
+      if (node.isConnected) node.closeModal();
       const el = root()?.querySelector(`[data-cc-key="${CSS.escape(cardKey(card))}"]`);
-      removeAfterFeedAction(card, el, action, days);
+      removeAfterFeedAction(card, el, action, days, send);
     };
     node.querySelector('[data-detail-dismiss]').onclick = () => leave('dismiss');
     node.querySelector('[data-detail-remind]').onclick = () => {
@@ -1180,6 +1222,41 @@
     node.querySelector('[data-detail-edit]')?.addEventListener('click', () => { node.closeModal(); if (SANDBOX) sandboxSignInGate(); else editCard(card); });
     node.querySelector('[data-detail-pin]').onclick = e => { pin(card); e.currentTarget.classList.toggle('is-pinned', !!card.pinned_at); e.currentTarget.setAttribute('aria-pressed', String(!!card.pinned_at)); };
     node.querySelector('[data-detail-like]').onclick = e => like(card, e.currentTarget);
+    bindChecklist(card, node, leave);
+  }
+  // Ticking an item saves it straight away. Ticking the last one finishes the
+  // card: the server takes a fully ticked Work card out of the feed
+  // (workComplete in api/feed.js), so it leaves like a completed reminder,
+  // with Undo, and nothing is saved until Undo has passed.
+  const FINISH_PAUSE_MS = 450;
+  function bindChecklist(card, node, leave) {
+    const boxes = [...node.querySelectorAll('[data-checklist-item]')];
+    if (!boxes.length) return;
+    const errorNode = node.querySelector('[data-checklist-error]');
+    const showProgress = () => {
+      node.querySelector('[data-detail-subtitle]').textContent = `${TYPES.work[1]}: ${card.subtitle}`;
+      render();
+    };
+    boxes.forEach(box => box.onchange = () => {
+      errorNode.textContent = '';
+      const index = Number(box.dataset.checklistItem), checked = box.checked;
+      const items = workItems(card).map((item, i) => (i === index ? { ...item, completed: checked } : item));
+      if (items.every(item => item.completed)) {
+        boxes.forEach(b => { b.disabled = true; });
+        node.querySelector('[data-detail-subtitle]').textContent = `${TYPES.work[1]}: ${items.length}/${items.length} items done`;
+        setTimeout(() => leave('finish', undefined, () => saveWorkItems(card, items).then(() => setWorkItems(card, items))), FINISH_PAUSE_MS);
+        return;
+      }
+      setWorkItems(card, items);
+      showProgress();
+      const save = () => saveWorkItems(card, workItems(card));
+      save().catch(err => {
+        if (err && err.status === 401) { V.showLogin(() => save().catch(() => toast('Could not save the checklist'))); return; }
+        // Only this tick failed: put it back, keeping any made since.
+        setWorkItems(card, workItems(card).map((item, i) => (i === index ? { ...item, completed: !checked } : item)));
+        if (box.isConnected) { box.checked = !checked; showProgress(); errorNode.textContent = err?.message || 'Could not save that change. Please try again.'; } else render();
+      });
+    });
   }
   const CAPTURE_SINGULAR_KEY = { learning: 'entry', kanban: 'item', work: 'item', family: 'update', bookmark: 'bookmark', talking_point: 'talking_point', reminder: 'reminder' };
   const quotaLimit = (key, fallback) => Number(state.stats?.quota?.[key]?.limit || fallback);
