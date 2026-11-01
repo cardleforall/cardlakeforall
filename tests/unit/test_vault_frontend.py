@@ -108,7 +108,7 @@ process.stdout.write(JSON.stringify({ items, saved: card.metadata.items, subtitl
         bind = js_block(js, "  function bindChecklist(card, node, leave) {", "\n  const CAPTURE_SINGULAR_KEY")
         self.assertIn("if (items.every(item => item.completed)) {", bind)
         self.assertIn("leave('finish', undefined, () => saveWorkItems(card, items)", bind)
-        self.assertIn("if (action === 'finish') return 'All items done';", js)
+        self.assertIn("if (action === 'finish') return card.type === 'learning' ? 'Marked as watched' : 'All items done';", js)
         # It goes through the same wait-for-Undo path as every other removal.
         self.assertIn("const run = () => (send ? send() :", js_block(js, "function removeAfterFeedAction(", "\n  function bringBack"))
 
@@ -143,6 +143,22 @@ process.stdout.write(JSON.stringify({ items, saved: card.metadata.items, subtitl
         self.assertIn("if (reviewed) bumpReviewed(1);", remove)
         # Undo takes it back.
         self.assertIn("if (reviewed) bumpReviewed(-1);", remove)
+
+    def test_a_learning_can_be_marked_watched_from_the_detail_view(self):
+        js = source(AURORA_FEED_JS)
+        self.assertIn("learning: [ICONS.learning, 'Learning', 'linear-gradient(135deg, oklch(52% .17 262), oklch(58% .15 250))', 'Mark watched'],", js)
+        button = js_block(js, "  function watchedButtonHtml(card) {", "\n  function markWatched")
+        self.assertIn("if (card.type !== 'learning') return '';", button)
+        self.assertIn("data-detail-watched", button)
+        detail = js_block(js, "  function detail(card) {", "\n  // A Learning card's primary action.")
+        self.assertIn("${watchedButtonHtml(card)}", detail)
+        # It leaves through the wait-for-Undo path and sends the existing PATCH.
+        self.assertIn("leave('finish', undefined, () => markWatched(card))", detail)
+        self.assertIn("if (!SANDBOX) return primary(card);", js_block(js, "  function markWatched(card) {", "\n  }"))
+        self.assertIn("if (card.type === 'learning') return V.api(`/api/learnings/${card.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'watched' }) });", js)
+        # The server keeps a watched learning out of the feed.
+        self.assertIn("(card.type === 'learning' && ['watched', 'skimmed'].includes(card.metadata.status))", source(ROOT / "api" / "feed.js"))
+        self.assertIn("card.type === 'learning' ? 'Marked as watched' : 'All items done'", js)
 
     def test_completing_a_reminder_marks_it_done_instead_of_deleting_it(self):
         js = source(AURORA_FEED_JS)

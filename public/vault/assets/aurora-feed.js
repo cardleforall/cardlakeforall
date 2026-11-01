@@ -837,7 +837,7 @@
   function removalMessage(card, action, days) {
     if (action === 'remind_later') return days > 1 ? `Snoozed for ${days} days` : 'Snoozed until tomorrow';
     if (action === 'stop') return 'Reminder deleted';
-    if (action === 'finish') return 'All items done';
+    if (action === 'finish') return card.type === 'learning' ? 'Marked as watched' : 'All items done';
     if (repeats(card)) return 'Done until it’s next due';
     if (isGithubIssue(card)) return 'Removed from Cardlake';
     return card.type === 'reminder' ? 'Reminder completed' : 'Card deleted';
@@ -859,7 +859,8 @@
   }
   // `action` is 'remind_later' (for `days`, one if left out), 'dismiss'
   // (complete or delete, see dismissCard), 'stop' (delete a recurring
-  // reminder) or 'finish' (a Work card's last item ticked), which brings its
+  // reminder) or 'finish' (a Work card's last item ticked, or a Learning
+  // card marked watched), which brings its
   // own request as `send`.
   function removeAfterFeedAction(card, el, action, days, send) {
     flushPendingRemoval();
@@ -1201,7 +1202,7 @@
     const pinLimitReached = !card.pinned_at && pinnedCount() >= maxPinned();
     const pinTitle = card.pinned_at ? 'Unpin' : pinLimitReached ? `Pin limit reached (${maxPinned()})` : 'Pin to top';
     const editButton = canEdit(card) ? `<button type="button" class="aurora-edit" data-detail-edit aria-label="Edit ${esc(titleOf(card))}">Edit</button>` : '';
-    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small data-detail-subtitle>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${checklistHtml(card)}${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}${attachmentListHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
+    const node = modal(`${editButton}<span class="aurora-type-badge big" style="background:${type[2]}">${type[0]}</span><small data-detail-subtitle>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</small><h2>${esc(titleOf(card))}</h2><p>${esc(card.body || '')}</p>${checklistHtml(card)}${watchedButtonHtml(card)}${calendarLinkHtml(card)}${issueMetaHtml(card)}${mediaHtml(card)}${attachmentListHtml(card)}<div class="aurora-modal-actions aurora-card-actions"><button type="button" data-detail-dismiss class="aurora-quiet aurora-dismiss" aria-label="${dismissLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">←</span> ${dismissLabel(card)}</button><button type="button" data-detail-remind class="aurora-action" aria-label="Snooze: ${esc(titleOf(card))}">Snooze <span aria-hidden="true">→</span></button><button type="button" data-detail-pin class="aurora-pin ${card.pinned_at ? 'is-pinned' : ''}" ${pinLimitReached ? 'disabled aria-disabled="true"' : ''} aria-label="${esc(pinTitle)}: ${esc(titleOf(card))}" aria-pressed="${!!card.pinned_at}" title="${esc(pinTitle)}">${PIN_ICON}</button><button type="button" data-detail-like class="aurora-heart ${card.liked_at ? 'is-liked' : ''}" aria-label="${card.liked_at ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${!!card.liked_at}">♥</button>${repeats(card) ? `<button type="button" data-detail-stop class="aurora-quiet" aria-label="Stop repeating: ${esc(titleOf(card))}">Stop repeating</button>` : ''}</div><label class="aurora-snooze-days">Snooze for ${snoozeDaysInputHtml()} days</label>`, undefined, onClose);
     // The detail view's actions take the same path as the card's own buttons,
     // so they get the same Undo (and the same retry after signing in again).
     const leave = (action, days, send) => {
@@ -1223,6 +1224,20 @@
     node.querySelector('[data-detail-pin]').onclick = e => { pin(card); e.currentTarget.classList.toggle('is-pinned', !!card.pinned_at); e.currentTarget.setAttribute('aria-pressed', String(!!card.pinned_at)); };
     node.querySelector('[data-detail-like]').onclick = e => like(card, e.currentTarget);
     bindChecklist(card, node, leave);
+    node.querySelector('[data-detail-watched]')?.addEventListener('click', () => leave('finish', undefined, () => markWatched(card)));
+  }
+  // A Learning card's primary action. The server keeps a watched learning out
+  // of the feed (archived in api/feed.js), so it leaves like a completed
+  // reminder, with Undo; an assistant can still find it.
+  function watchedButtonHtml(card) {
+    if (card.type !== 'learning') return '';
+    return `<button type="button" class="aurora-watched" data-detail-watched aria-label="${primaryLabel(card)}: ${esc(titleOf(card))}"><span aria-hidden="true">✓</span> ${primaryLabel(card)}</button>`;
+  }
+  function markWatched(card) {
+    if (!SANDBOX) return primary(card);
+    const target = sandboxAllCards().find(c => c.id === card.id);
+    if (target) { target.metadata = { ...target.metadata, status: 'watched' }; target.dismissed_at = new Date().toISOString(); }
+    return Promise.resolve({});
   }
   // Ticking an item saves it straight away. Ticking the last one finishes the
   // card: the server takes a fully ticked Work card out of the feed

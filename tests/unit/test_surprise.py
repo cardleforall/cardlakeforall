@@ -158,9 +158,9 @@ class SurpriseWiringTests(unittest.TestCase):
         # The demo feed never calls the API.
         self.assertIn("const surpriseReady = () => !SANDBOX &&", feed)
         index = source(VAULT_INDEX)
-        self.assertIn("/vault/assets/aurora-feed.js?v=48", index)
+        self.assertIn("/vault/assets/aurora-feed.js?v=49", index)
         self.assertIn("/vault/assets/vault.js?v=20", index)
-        self.assertIn("/vault/assets/aurora-feed.css?v=28", index)
+        self.assertIn("/vault/assets/aurora-feed.css?v=29", index)
 
     def test_the_feed_header_always_offers_the_deal(self):
         feed = source(AURORA_FEED_JS)

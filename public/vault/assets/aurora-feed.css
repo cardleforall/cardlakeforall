@@ -269,6 +269,10 @@
 .aurora-checklist-item input:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
 .aurora-checklist-item input:checked+span{color:var(--ink-faint);text-decoration:line-through}
 .aurora-checklist-item input:disabled{cursor:default}
+/* A Learning card's "Mark watched" in the detail view. */
+.aurora-watched{display:inline-flex;align-items:center;gap:6px;min-height:36px;margin:12px 0 2px;padding:0 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);color:var(--accent-2);font:700 13px var(--font-body);cursor:pointer}
+.aurora-watched:hover{border-color:var(--accent-2)}
+.aurora-watched:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
 /* Attachments that aren't previewed inline: one row per file, linking to its download. */
 .aurora-attachments{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
 .aurora-attachment-link{display:flex;align-items:center;gap:8px;min-height:36px;padding:7px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--ink);font:600 13px var(--font-body);text-decoration:none}
