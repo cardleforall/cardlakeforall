@@ -56,6 +56,21 @@ for (let i = 2; i < 5; i += 1) if (types[i] === types[i - 1] && types[i] === typ
         ):
             self.assertIn(token, text)
 
+    def test_cards_only_advertise_actions_that_exist(self):
+        # Each action a card lists is either one POST /api/feed carries out
+        # or one the app does itself (opening a link, expanding a card,
+        # completing a reminder or marking a learning watched or skimmed
+        # through the card's own endpoint). A Work card once listed
+        # 'toggle_items', which nothing handled.
+        text = source(API / "feed.js")
+        client_actions = {"open", "expand", "toggle_complete", "watched", "skimmed"}
+        advertised = set()
+        for actions in re.findall(r"actions: \[([^\]]*)\]", text):
+            advertised.update(re.findall(r"'([a-z_]+)'", actions))
+        self.assertIn("remind_later", advertised)
+        for action in advertised - client_actions:
+            self.assertIn(f"action === '{action}'", text, action)
+
     def test_feed_searches_before_pagination_and_bounds_the_query(self):
         text = source(API / "feed.js")
         self.assertIn("const searchQuery =", text)
