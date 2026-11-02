@@ -1,11 +1,12 @@
 # Cardlake
 
-**Your AI's memory, and you own it.** One daily feed for reminders, learnings,
-work and ideas, which you, Claude and ChatGPT all read and write.
+**A self-hostable feed that Claude and ChatGPT can save to.** Reminders,
+learnings, bookmarks and work follow-ups in one place you own: open source
+(AGPL), on your own Vercel and Neon accounts.
 
 [![CI](https://github.com/cardleforall/cardlakeforall/actions/workflows/ci.yml/badge.svg)](https://github.com/cardleforall/cardlakeforall/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-[![MCP: Claude, ChatGPT, Gemini](https://img.shields.io/badge/MCP-Claude%20%C2%B7%20ChatGPT%20%C2%B7%20Gemini-8A2BE2)](docs/MCP_SERVER.md)
+[![MCP: Claude, ChatGPT](https://img.shields.io/badge/MCP-Claude%20%C2%B7%20ChatGPT-8A2BE2)](docs/MCP_SERVER.md)
 
 **[Get started](#get-started)** · [What it does](#what-it-does) · [Looking after your Cardlake](#looking-after-your-cardlake) · [For developers](#for-developers)
 
