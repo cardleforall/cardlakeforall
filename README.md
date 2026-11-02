@@ -70,7 +70,9 @@ your AI save stays with you.
 
 ### Why a feed, not folders
 
-Capture, one vault, review, and streaks each map to how memory and habits work. An open loop costs attention until it's captured somewhere trustworthy, one system beats maintaining seven, and unreviewed things fade fast unless something resurfaces them.
+Something you mean to come back to keeps nagging at you until it's written
+down somewhere you trust. One feed is easier to keep up with than seven apps,
+and it brings things back to the top before you forget them.
 
 ## Looking after your Cardlake
 
