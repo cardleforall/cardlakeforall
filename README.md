@@ -36,6 +36,10 @@ terminal.
 **New to Vercel or GitHub?** The [step-by-step guide](docs/SETUP_GUIDE.md) has
 a picture for every step.
 
+The whole deploy, from the button to a first card, in 37 seconds:
+
+https://github.com/user-attachments/assets/8834c580-ecd8-4ebc-847b-f73f6f40099c
+
 ## What it does
 
 ![A Cardlake feed on a Monday morning: two work follow-ups pinned at the top, with filters for favorites and snoozed cards.](docs/media/cardlake-feed.webp)
