@@ -115,12 +115,18 @@ function registerClient(metadata) {
 // What the consent page calls the app asking for access. Derived only from the
 // client ids accepted above, never from anything the request supplies.
 function clientDisplayName(clientId) {
-  if (clientId === CLAUDE_CODE_CLIENT_ID) return 'Claude Code';
-  if (clientId === CLAUDE_CLIENT_ID) return 'Claude';
-  if (clientId === CHATGPT_CLIENT_ID) return 'ChatGPT';
-  if (clientId === GEMINI_CLIENT_ID) return 'Gemini';
-  if (clientId.startsWith('https://chatgpt.com/oauth/codex/')) return 'Codex';
-  return 'your AI assistant';
+  return knownClientName(clientId) || 'your AI assistant';
+}
+// The name a card saved through this client is labelled with ("From Claude").
+// Null for anything else, so a card never claims an app Cardlake can't name.
+function knownClientName(clientId) {
+  const id = String(clientId || '');
+  if (id === CLAUDE_CODE_CLIENT_ID) return 'Claude Code';
+  if (id === CLAUDE_CLIENT_ID) return 'Claude';
+  if (id === CHATGPT_CLIENT_ID) return 'ChatGPT';
+  if (id === GEMINI_CLIENT_ID) return 'Gemini';
+  if (id.startsWith('https://chatgpt.com/oauth/codex/')) return 'Codex';
+  return null;
 }
 
 function base64url(value) { return Buffer.from(value).toString('base64url'); }
@@ -165,16 +171,19 @@ function verifyPkce(verifier, challenge) {
   return safeEqual(crypto.createHash('sha256').update(verifier).digest('base64url'), challenge);
 }
 // A token belongs to the domain it was issued for and is refused on the other.
-function createAccessToken(email, scopes, resource = RESOURCE) {
+// The client's name travels in the signed token, so a request can't claim to
+// come from an app it doesn't. Tokens issued before this have none.
+function createAccessToken(email, scopes, resource = RESOURCE, clientId = null) {
   const now = Math.floor(Date.now() / 1000);
-  return encode({ typ: 'cardle-access', iss: new URL(resource).origin, sub: email, aud: resource, scope: scopes.join(' '), iat: now, exp: now + ACCESS_TTL_SECONDS });
+  const client = knownClientName(clientId);
+  return encode({ typ: 'cardle-access', iss: new URL(resource).origin, sub: email, aud: resource, scope: scopes.join(' '), iat: now, exp: now + ACCESS_TTL_SECONDS, ...(client ? { client } : {}) });
 }
 function resolveOAuthAuthorization(req) {
   const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
   const payload = match && decode(match[1]);
   if (!payload || payload.typ !== 'cardle-access' || payload.iss !== originFor(req) || payload.aud !== resourceFor(req) || payload.exp <= Math.floor(Date.now() / 1000) || !payload.sub) return null;
   const scopes = normalizeScopes(payload.scope);
-  return scopes ? { tenant: payload.sub, scopes } : null;
+  return scopes ? { tenant: payload.sub, scopes, client: typeof payload.client === 'string' ? payload.client : null } : null;
 }
 function resolveOAuthTenant(req) {
   return resolveOAuthAuthorization(req)?.tenant || null;

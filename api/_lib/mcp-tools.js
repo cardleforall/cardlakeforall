@@ -87,6 +87,12 @@ const FEED_ACTION_RESULT = z.looseObject({
   snoozed_until: when.describe('Set while the card is snoozed.'),
 });
 const DELETE_RESULT = z.looseObject({ deleted: z.boolean() });
+// The create tools show the card they saved, with Undo, in the same view.
+const SAVED_CARD_META = {
+  ...CARDS_VIEW_META,
+  'openai/toolInvocation/invoking': 'Saving to Cardlake…',
+  'openai/toolInvocation/invoked': 'Saved to Cardlake.',
+};
 const SYNC_RESULT = z.looseObject({ synced: z.number(), last_synced_at: when });
 
 // The same data twice: as text for clients that predate structured results
@@ -119,6 +125,14 @@ function feedCard(card) {
   if (!card || typeof card !== 'object') return card;
   const { sort_order, dismissed_at, ...rest } = card;
   return rest;
+}
+
+// A new card's result: everything the tool already returned, plus the card in
+// the shape the card view shows (saved: true tells it to offer Undo). The row
+// goes in as read, because normalize needs fields publicCard removes.
+async function savedCard(sql, tenant, clientName, type, row, shownRow = row) {
+  const savedFrom = await feed.recordSavedFrom(sql, tenant, type, row.id, clientName);
+  return { ...publicCard(shownRow), saved: true, saved_from: savedFrom, card: feedCard(feed.cardFromRow(type, row, savedFrom)) };
 }
 
 // A feed action reports the card and its pin / like / snooze state now, not
@@ -196,7 +210,7 @@ function wrap(fn) {
 // than config.remove() directly so it also clears feed_state (likes/pins/
 // snoozes) and purges any attachments, matching what swiping "Delete" in
 // the feed does.
-function registerResourceTools(server, tenant, config, opts) {
+function registerResourceTools(server, tenant, config, opts, clientName) {
   const { name, title, createSchema, updateSchema, guardCreate, guardMutate } = opts;
 
   server.registerTool(`create_${name}`, {
@@ -204,13 +218,14 @@ function registerResourceTools(server, tenant, config, opts) {
     description: opts.createDescription,
     annotations: CREATES,
     inputSchema: createSchema,
+    _meta: SAVED_CARD_META,
   }, wrap(async input => {
     const sql = getSql();
     if (guardCreate) await guardCreate(sql, tenant);
     const values = validate(input, config, true);
     await assertCardCreateAllowed(sql, tenant, config.feedType, values);
     const rows = await config.create(sql, tenant, values);
-    return publicCard(rows[0]);
+    return savedCard(sql, tenant, clientName, config.feedType, rows[0]);
   }));
 
   server.registerTool(`update_${name}`, {
@@ -298,7 +313,7 @@ function learningTitle(title) {
 // tenant is resolved once per request (see api/mcp.js) from the caller's own
 // personal access token (or, for backward compatibility, MCP_TOKEN mapping
 // to the 'default' tenant) -- every tool registered here is scoped to it.
-function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write']) {
+function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'], clientName = null) {
   // ChatGPT reads tool-level OAuth metadata before invoking a Cardlake tool.
   // A personal API token is full access; OAuth tools are registered only when
   // their individual scope was actually granted. The bearer itself remains
@@ -455,7 +470,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       completed: z.boolean().optional(),
       recurrence: RECURRENCE.optional().describe('"none" stops it repeating.'),
     }),
-  });
+  }, clientName);
 
   // --- Learnings (bespoke API, not resource-configs-backed) ---
   server.registerTool('create_learning', {
@@ -469,6 +484,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       status: z.enum(LEARNING_STATUS).describe('saved = not started, watched/skimmed = finished.'),
       category: z.enum(LEARNING_CATEGORY),
     }),
+    _meta: SAVED_CARD_META,
   }, wrap(async input => {
     const { notes, status, category } = input;
     const title = learningTitle(input.title);
@@ -482,7 +498,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       values (${tenant}, ${title}, ${url || null}, ${notes || ''}, ${status}, ${category}, ${nextSortOrder})
       returning *
     `;
-    return publicCard(normalizeEntry(rows[0]));
+    return savedCard(sql, tenant, clientName, 'learning', rows[0], normalizeEntry(rows[0]));
   }));
 
   server.registerTool('update_learning', {
@@ -570,7 +586,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       title: z.string().min(1).optional(),
       items: z.array(workItemSchema).optional(),
     }),
-  });
+  }, clientName);
 
   // --- Family updates ---
   registerResourceTools(server, tenant, configs.family, {
@@ -587,7 +603,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       person: z.string().min(1).optional(),
       content: z.string().min(1).optional(),
     }),
-  });
+  }, clientName);
 
   // --- Bookmarks ---
   registerResourceTools(server, tenant, configs.bookmarks, {
@@ -608,7 +624,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       notes: z.string().optional(),
       category: z.enum(['tech', 'business', 'personal', 'other']).optional(),
     }),
-  });
+  }, clientName);
 
   // --- Misc (card type talking_point) ---
   registerResourceTools(server, tenant, configs.talkingPoints, {
@@ -627,7 +643,7 @@ function registerTools(server, tenant, scopes = ['cardle.read', 'cardle.write'])
       content: z.string().min(1).optional(),
       subsection_of: z.string().uuid().nullable().optional().describe('Id of a parent Misc card; null makes it a top-level card again.'),
     }),
-  });
+  }, clientName);
 }
 
 module.exports = { registerTools };

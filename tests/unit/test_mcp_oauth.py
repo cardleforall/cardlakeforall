@@ -86,6 +86,13 @@ const readOnlyToken = oauth.createAccessToken('member@example.test', ['cardle.re
 const readOnly = oauth.resolveOAuthAuthorization({ headers: { authorization: `Bearer ${readOnlyToken}` } });
 assert(readOnly?.tenant === 'member@example.test', 'read-only OAuth token rejected');
 assert(readOnly.scopes.length === 1 && readOnly.scopes[0] === 'cardle.read', 'read-only OAuth scope was altered');
+const clientOf = clientId => oauth.resolveOAuthAuthorization({ headers: { authorization: `Bearer ${oauth.createAccessToken('member@example.test', ['cardle.write'], undefined, clientId)}` } }).client;
+assert(clientOf(oauth.CLAUDE_CLIENT_ID) === 'Claude', 'token lost the Claude client');
+assert(clientOf(oauth.CHATGPT_CLIENT_ID) === 'ChatGPT', 'token lost the ChatGPT client');
+assert(clientOf(codexClientId) === 'Codex', 'token lost the Codex client');
+assert(clientOf('https://attacker.example/client.json') === null, 'an unknown client was named');
+assert(readOnly.client === null, 'a token without a client was given one');
+assert(oauth.clientDisplayName('https://attacker.example/client.json') === 'your AI assistant', 'consent named an unknown client');
 assert(oauth.resolveOAuthTenant({ headers: { authorization: 'Bearer invalid' } }) === null, 'invalid token accepted');
 assert(oauth.authorizationMetadata().code_challenge_methods_supported.includes('S256'), 'metadata must advertise PKCE S256');
 assert(oauth.authorizationMetadata().grant_types_supported.includes('refresh_token'), 'metadata must advertise refresh-token support');

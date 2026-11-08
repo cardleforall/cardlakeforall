@@ -26,11 +26,11 @@ async function setup() {
   return testDb;
 }
 
-async function connect(tenant, scopes) {
+async function connect(tenant, scopes, clientName) {
   const { createMcpServer } = require('../../api/_lib/mcp-server');
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
   const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js');
-  const server = await createMcpServer(tenant, scopes);
+  const server = await createMcpServer(tenant, scopes, clientName);
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: 'cardle-test', version: '0.0.0' });
   await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
@@ -525,6 +525,187 @@ const scenarios = {
       const added = listed.get(name).filter(arg => !required.includes(arg));
       assert.deepEqual(added, [], `${name} now requires ${added.join(', ')}; existing callers don't send it`);
     }
+  },
+
+  // A card saved through an AI assistant says which one, wherever it's read
+  // from, and the result carries the card in the shape the card view shows.
+  async saved_cards_are_labelled_with_the_client_that_saved_them() {
+    await setup();
+    const feed = require('../../api/feed');
+    const { call } = await connect(ALICE, undefined, 'Claude');
+    const creates = {
+      reminder: ['create_reminder', { title: 'Label reminder' }],
+      learning: ['create_learning', { title: 'Label learning', status: 'saved', category: 'ai' }],
+      work: ['create_work_item', { title: 'Label work', items: [{ text: 'One' }] }],
+      family: ['create_family_update', { person: 'Label family', content: 'News' }],
+      bookmark: ['create_bookmark', { title: 'Label bookmark', url: 'https://example.test/b' }],
+      talking_point: ['create_talking_point', { section_title: 'Label misc', content: 'Words' }],
+    };
+    const ids = {};
+    for (const [type, [name, args]] of Object.entries(creates)) {
+      const saved = data(await call(name, args));
+      ids[type] = saved.id;
+      assert.equal(saved.saved, true, name);
+      assert.equal(saved.saved_from, 'Claude', name);
+      assert.equal(saved.card.id, saved.id, name);
+      assert.equal(saved.card.type, type, name);
+      assert.match(saved.card.title, /^Label /, name);
+      assert.equal(saved.card.saved_from, 'Claude', name);
+      assert.ok(!JSON.stringify(saved).includes(ALICE), `${name} returns the account email`);
+    }
+
+    const page = data(await call('list_feed', { limit: 50 }));
+    for (const card of page.cards.filter(c => /^Label /.test(c.title))) assert.equal(card.saved_from, 'Claude', card.type);
+    const found = data(await call('search_cards', { query: 'Label bookmark' }));
+    assert.equal(found.cards[0].saved_from, 'Claude');
+    const one = data(await call('get_card', { card_type: 'reminder', card_id: ids.reminder }));
+    assert.equal(one.card.saved_from, 'Claude');
+    assert.equal(one.saved, undefined, 'reading a card back is not a save');
+
+    // The website reads the same cards, so it gets the label too.
+    const web = await feed.buildFeedResponse(db.getSql(), ALICE, { limit: '50' });
+    assert.equal(web.cards.find(c => c.id === ids.bookmark).saved_from, 'Claude');
+
+    // The label stays through feed actions and an edit, from any client, and
+    // doesn't change to the client doing the editing.
+    const fromChatgpt = await connect(ALICE, undefined, 'ChatGPT');
+    data(await fromChatgpt.call('like_card', { card_type: 'bookmark', card_id: ids.bookmark }));
+    data(await fromChatgpt.call('update_bookmark', { id: ids.bookmark, notes: 'Edited' }));
+    assert.equal(data(await call('get_card', { card_type: 'bookmark', card_id: ids.bookmark })).card.saved_from, 'Claude');
+
+    // Undo is the delete tool: the card and its label both go.
+    assert.deepEqual(data(await call('delete_bookmark', { id: ids.bookmark })).deleted, true);
+    assert.equal((await db.getSql()`select 1 from feed_state where item_id = ${ids.bookmark}`).length, 0);
+  },
+
+  // Tokens with no known client, and cards made anywhere else, have no label.
+  async cards_from_unknown_clients_have_no_label() {
+    await setup();
+    const { call } = await connect(ALICE);
+    const saved = data(await call('create_reminder', { title: 'No label' }));
+    assert.equal(saved.saved, true);
+    assert.equal(saved.saved_from, null);
+    assert.equal(saved.card.saved_from, null);
+    assert.equal((await db.getSql()`select 1 from feed_state where item_id = ${saved.id}`).length, 0, 'nothing stored for an unlabelled card');
+    assert.equal(data(await call('get_card', { card_type: 'reminder', card_id: saved.id })).card.saved_from, null);
+  },
+
+  // Between the deploy and the migration, saves and reads keep working.
+  async saving_and_reading_work_before_the_migration() {
+    await setup();
+    await db.getSql()`alter table feed_state drop column saved_from`;
+    const { call } = await connect(ALICE, undefined, 'Claude');
+    const saved = data(await call('create_reminder', { title: 'Before the migration' }));
+    assert.equal(saved.saved_from, null);
+    assert.equal(saved.card.title, 'Before the migration');
+    const page = data(await call('list_feed', {}));
+    assert.ok(page.cards.some(card => card.id === saved.id && card.saved_from === null));
+    data(await call('pin_card', { card_type: 'reminder', card_id: saved.id }));
+    assert.ok(data(await call('get_card', { card_type: 'reminder', card_id: saved.id })).card.pinned_at);
+  },
+
+  // A database further behind still reads: Postgres names only the first
+  // missing column, which needn't be the newest one.
+  async reading_works_on_a_database_missing_several_columns() {
+    await setup();
+    await db.getSql()`alter table feed_state drop column saved_from`;
+    await db.getSql()`alter table feed_state drop column reviewed_at`;
+    const { call } = await connect(ALICE, undefined, 'Claude');
+    const saved = data(await call('create_reminder', { title: 'Far behind' }));
+    assert.ok(data(await call('list_feed', {})).cards.some(card => card.id === saved.id));
+  },
+
+  // Undo calls the tool the card view names for the card's type, with the id on
+  // the card. Every type has to survive that, and leave nothing behind.
+  async undo_removes_a_saved_card_of_every_type() {
+    await setup();
+    const html = require('fs').readFileSync(require('path').join(__dirname, '../../api/_lib/mcp-app/cards.html'), 'utf8');
+    const deleteTools = new Function(`return ${/const DELETE_TOOLS = (\{[\s\S]*?\});/.exec(html)[1]}`)();
+    const { call } = await connect(ALICE, undefined, 'Claude');
+    const creates = {
+      reminder: ['create_reminder', { title: 'Undo reminder', due_date: '2030-01-05' }],
+      learning: ['create_learning', { title: 'Undo learning', url: 'https://example.test/l', notes: 'Notes', status: 'saved', category: 'ai' }],
+      work: ['create_work_item', { title: 'Undo work', items: [{ text: 'One' }, { text: 'Two', completed: true }] }],
+      family: ['create_family_update', { person: 'Undo family', content: 'News' }],
+      bookmark: ['create_bookmark', { title: 'Undo bookmark', url: 'https://example.test/b' }],
+      talking_point: ['create_talking_point', { section_title: 'Undo misc', content: 'Words' }],
+    };
+    assert.deepEqual(Object.keys(deleteTools).sort(), Object.keys(creates).sort());
+    for (const [type, [name, args]] of Object.entries(creates)) {
+      const { card } = data(await call(name, args));
+      assert.equal(data(await call(deleteTools[card.type], { id: card.id })).deleted, true, type);
+      assert.ok((await call('get_card', { card_type: type, card_id: card.id })).isError, `${type} is gone`);
+      assert.equal((await db.getSql()`select 1 from feed_state where item_id = ${card.id}`).length, 0, `${type} label is gone`);
+      // Undoing frees the title for a second try.
+      assert.equal(data(await call(name, args)).card.type, type);
+    }
+
+    // A repeating reminder saved as already done is snoozed to its next
+    // occurrence. Labelling must keep that, and Undo must still remove it.
+    const rolled = data(await call('create_reminder', { title: 'Undo rolled', due_date: '2030-01-05', recurrence: 'weekly', completed: true }));
+    const [state] = await db.getSql()`select saved_from, remind_later_until from feed_state where item_id = ${rolled.id}`;
+    assert.equal(state.saved_from, 'Claude');
+    assert.ok(state.remind_later_until, 'still snoozed');
+    assert.equal(data(await call('delete_reminder', { id: rolled.id })).deleted, true);
+
+    // Another account can't undo it, and a refused save labels nothing.
+    const kept = data(await call('create_bookmark', { title: 'Alice keeps this' }));
+    const bob = await connect(BOB, undefined, 'ChatGPT');
+    assert.ok((await bob.call('delete_bookmark', { id: kept.id })).isError);
+    assert.equal(data(await call('get_card', { card_type: 'bookmark', card_id: kept.id })).card.saved_from, 'Claude');
+    assert.ok((await bob.call('create_bookmark', { title: 'Bob one' })).structuredContent.saved);
+    const duplicate = await call('create_bookmark', { title: 'Alice keeps this' });
+    assert.ok(duplicate.isError, 'a duplicate title is refused');
+    assert.equal(duplicate.structuredContent, undefined);
+  },
+
+  // The whole way through the real endpoint: the label comes from the signed
+  // token, and a token edited to claim another assistant is refused.
+  async a_real_request_is_labelled_from_its_signed_token() {
+    await setup();
+    const http = require('http');
+    const oauth = require('../../api/_lib/oauth');
+    const handler = require('../../api/mcp');
+    const server = http.createServer((req, res) => {
+      let raw = '';
+      req.on('data', chunk => { raw += chunk; });
+      req.on('end', () => {
+        req.body = JSON.parse(raw);
+        req.query = {};
+        res.status = code => { res.statusCode = code; return res; };
+        res.json = body => res.end(JSON.stringify(body));
+        handler(req, res);
+      });
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const save = (token, title) => fetch(`http://127.0.0.1:${server.address().port}/api/mcp`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'create_bookmark', arguments: { title } } }),
+      });
+      const token = oauth.createAccessToken(ALICE, ['cardle.read', 'cardle.write'], undefined, oauth.CLAUDE_CLIENT_ID);
+      const response = await save(token, 'Through the endpoint');
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).result.structuredContent.saved_from, 'Claude');
+
+      const [body, signature] = token.split('.');
+      const claims = JSON.parse(Buffer.from(body, 'base64url').toString());
+      const forged = Buffer.from(JSON.stringify({ ...claims, client: 'ChatGPT' })).toString('base64url');
+      assert.equal((await save(`${forged}.${signature}`, 'Forged')).status, 401);
+      assert.equal((await db.getSql()`select 1 from bookmarks where title = 'Forged'`).length, 0);
+    } finally {
+      server.close();
+    }
+  },
+
+  // Only the signed token names the assistant: a tool's arguments can't.
+  async a_tool_call_cannot_choose_its_own_label() {
+    await setup();
+    const { call } = await connect(ALICE);
+    const saved = data(await call('create_reminder', { title: 'Claims a label', saved_from: 'Claude' }));
+    assert.equal(saved.saved_from, null);
+    assert.equal(data(await call('get_card', { card_type: 'reminder', card_id: saved.id })).card.saved_from, null);
   },
 };
 

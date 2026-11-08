@@ -98,6 +98,9 @@ create table if not exists feed_state (
   updated_at timestamptz not null default now()
 );
 create unique index if not exists feed_state_item_unique on feed_state (user_email, item_type, item_id);
+-- Which AI assistant saved the card ("Claude", "ChatGPT", ...), shown on it as
+-- "From Claude". Empty for cards added on the website or before this existed.
+alter table feed_state add column if not exists saved_from text;
 create index if not exists feed_state_active_idx on feed_state (user_email, sort_order, pinned_at) where dismissed_at is null;
 
 -- Live titles are unique per user without preventing historical soft-deleted duplicates.

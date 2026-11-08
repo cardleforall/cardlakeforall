@@ -177,6 +177,10 @@ For whoever runs or develops this deployment.
   `days`) / `unsnooze_card` and the card type's `delete_*` tool through the host (`tools/call`),
   the same tools the model uses (so a read-only grant gets an error on the card, not a write).
   Delete asks for confirmation on the card before it calls anything.
+  The `create_*` tools show the card they saved through the same view (`saved: true` on the
+  result), with Undo, which calls the same `delete_*` tool without asking, since the person
+  has just seen what was saved. After ten minutes (a reopened chat replays the result) it's an
+  ordinary card whose Delete asks first. Read-only grants don't have these tools.
   After each change, if the host supports `updateModelContext`, it tells the model what changed.
   `tests/unit/mcp_view_scenarios.js` drives it as a host would. ChatGPT's Apps SDK keys off its
   own resource MIME type (`text/html+skybridge`) rather than the MCP Apps one above, so the same
@@ -188,6 +192,12 @@ For whoever runs or develops this deployment.
 - **Prompts** (`api/_lib/mcp-prompts.js`): `daily_review`, `weekly_recap`, `find_card`. They're
   plain instructions that name read tools, the same for every account (never account data),
   and are registered for every grant, read-only included.
+- **Where a card came from**: a card saved through OAuth from a known client is labelled with
+  that client's name (`saved_from`: Claude, Claude Code, ChatGPT, Codex or Gemini), read from
+  the signed access token, never from the request. It's stored on `feed_state`, set once when
+  the card is created and returned with the card. Personal access tokens, other clients and
+  cards added on the website have no label. Only the name is kept, nothing about the
+  conversation. A save still works if the label can't be written, as before the migration.
 - **What results contain**: only what the assistant asked about. `create_*` / `update_*`
   return the card without `user_email`, `sort_order`, `updated_at` or `deleted_at`; feed
   actions return `{ card_type, card_id, pinned_at, liked_at, snoozed_until }` rather than the

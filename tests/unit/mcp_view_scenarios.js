@@ -45,8 +45,9 @@ function loadView() {
   const document = {
     getElementById: id => (id === 'root' ? root : null),
     createElement: tag => new Node(tag),
+    createElementNS: (_, tag) => new Node(tag),
     documentElement: { style: rootStyle, scrollHeight: 240 },
-    body: { scrollHeight: 240 },
+    body: { scrollHeight: 240, height: 240, getBoundingClientRect() { return { height: this.height }; } },
   };
   vm.runInNewContext(script, { window, document, console });
   const deliver = (data, source = parent) => { for (const handler of listeners) handler({ data, source }); };
@@ -65,6 +66,8 @@ async function connected(hostContext = {}, hostCapabilities = {}) {
 
 const toolResult = structuredContent => ({ jsonrpc: '2.0', method: 'ui/notifications/tool-result', params: { content: [{ type: 'text', text: JSON.stringify(structuredContent) }], structuredContent } });
 const card = (overrides = {}) => ({ id: overrides.id || 'c1', type: 'reminder', title: 'Call the dentist', subtitle: 'Due tomorrow', body: '', metadata: {}, created_at: '2026-09-01T00:00:00Z', pinned_at: null, liked_at: null, remind_later_until: null, ...overrides });
+
+const minutesAgo = minutes => new Date(Date.now() - minutes * 60000).toISOString();
 
 const scenarios = {
   // AC 4: the handshake, in the order the spec requires.
@@ -97,7 +100,7 @@ const scenarios = {
     view.deliver(toolResult({ cards: [card({ id: 'a', pinned_at: '2026-09-01T00:00:00Z' }), card({ id: 'b', type: 'kanban', title: 'Fix login', liked_at: '2026-09-02T00:00:00Z', metadata: { status: 'done' } })], next_cursor: 'abc', view: 'active', integrations: [], stats: {} }));
     let items = view.root.byClass('card');
     assert.equal(items.length, 2);
-    assert.match(items[0].textContent, /Reminder.*Pinned.*Call the dentist.*Due tomorrow/);
+    assert.match(items[0].textContent, /Reminder: Due tomorrow.*Pinned.*Call the dentist/);
     assert.match(items[1].textContent, /GitHub issue.*Liked.*Done.*Fix login/);
     assert.match(view.root.byClass('summary')[0].textContent, /2 cards \(more in Cardlake\)/);
     const size = view.sent.filter(m => m.method === 'ui/notifications/size-changed');
@@ -369,6 +372,117 @@ const scenarios = {
     await view.settle();
     assert.match(view.root.byClass('card')[0].textContent, /Liked/);
     assert.equal(view.sent.filter(m => m.method === 'ui/update-model-context').length, 0);
+  },
+
+  // A card a create tool just saved shows what was saved, and its only action
+  // is Undo, which needs no question: it was saved a moment ago.
+  async view_shows_a_saved_card_with_undo() {
+    const view = await connected({}, { serverTools: {}, updateModelContext: { text: {} } });
+    view.deliver(toolResult({ id: 'n', title: 'Pricing', saved: true, saved_from: 'ChatGPT', card: card({ id: 'n', type: 'bookmark', title: 'Pricing', subtitle: '', saved_from: 'ChatGPT', metadata: { url: 'https://example.test/p' }, created_at: minutesAgo(0) }) }));
+    const item = () => view.root.byClass('card')[0];
+    assert.match(item().byClass('saved-note')[0].textContent, /Saved to Cardlake/);
+    assert.match(item().textContent, /Pricing/);
+    assert.match(item().byClass('added')[0].textContent, /From ChatGPT/);
+    assert.deepEqual(item().byClass('action').map(b => b.textContent), ['Undo']);
+    assert.equal(item().byClass('open').length, 1, 'a link on the card still opens');
+    assert.equal(view.root.byClass('footer')[0].byClass('open')[0].textContent, 'Open Cardlake ↗');
+
+    item().byClass('action')[0].click();
+    const undo = view.sent.filter(m => m.method === 'tools/call').at(-1);
+    assert.deepEqual(undo.params, { name: 'delete_bookmark', arguments: { id: 'n' } });
+    view.deliver({ jsonrpc: '2.0', id: undo.id, result: { content: [], structuredContent: { deleted: true } } });
+    await view.settle();
+    assert.equal(item().textContent, 'Removed "Pricing".');
+    assert.equal(item().byClass('action').length, 0);
+    assert.match(view.sent.filter(m => m.method === 'ui/update-model-context').at(-1).params.content[0].text, /removed the bookmark "Pricing" \(bookmark n\) right after saving it/);
+
+    const readOnly = await connected();
+    readOnly.deliver(toolResult({ saved: true, card: card({ id: 'r', title: 'Read only', created_at: minutesAgo(0) }) }));
+    assert.match(readOnly.root.textContent, /Saved to Cardlake.*Read only/);
+    assert.equal(readOnly.root.byClass('action').length, 0, 'no Undo when the host cannot run tools');
+
+    // Reading a card back is not a save, even with a label on it.
+    const later = await connected({}, { serverTools: {} });
+    later.deliver(toolResult({ card: card({ id: 'l', saved_from: 'Claude' }) }));
+    assert.equal(later.root.byClass('saved-note').length, 0);
+    assert.ok(later.root.byClass('action').some(b => b.textContent === 'Pin'));
+  },
+
+  async view_keeps_a_saved_card_when_undo_fails() {
+    const view = await connected({}, { serverTools: {} });
+    view.deliver(toolResult({ saved: true, card: card({ id: 'n', title: 'Pricing', created_at: minutesAgo(0) }) }));
+    const item = () => view.root.byClass('card')[0];
+    item().byClass('action')[0].click();
+    const undo = view.sent.filter(m => m.method === 'tools/call').at(-1);
+    view.deliver({ jsonrpc: '2.0', id: undo.id, error: { code: -32600, message: 'User declined' } });
+    await view.settle();
+    assert.match(item().textContent, /Pricing/);
+    assert.equal(item().byClass('notice')[0].textContent, "Couldn't remove this card here. Ask the assistant instead.");
+    assert.ok(!item().byClass('action')[0].disabled, 'Undo can be tried again');
+  },
+
+  // Reopening a chat replays the saved result, perhaps long after the card was
+  // edited, so an old one mustn't offer a delete that asks nothing.
+  async view_stops_offering_undo_once_a_saved_card_is_old() {
+    for (const created_at of [minutesAgo(11), minutesAgo(60 * 24 * 30), 'not a date', null]) {
+      const view = await connected({}, { serverTools: {} });
+      view.deliver(toolResult({ saved: true, card: card({ id: 'n', title: 'Pricing', created_at }) }));
+      const item = view.root.byClass('card')[0];
+      assert.equal(item.byClass('saved-note').length, 0, `no saved note for ${created_at}`);
+      const labels = item.byClass('action').map(b => b.textContent);
+      assert.ok(!labels.includes('Undo'), `no Undo for ${created_at}`);
+      item.byClass('action').find(b => b.textContent === 'Delete').click();
+      assert.equal(view.sent.filter(m => m.method === 'tools/call').length, 0, 'deleting it asks first');
+      assert.match(item.textContent, /Delete this card\?/);
+    }
+    const recent = await connected({}, { serverTools: {} });
+    recent.deliver(toolResult({ saved: true, card: card({ id: 'n', created_at: minutesAgo(9) }) }));
+    assert.deepEqual(recent.root.byClass('action').map(b => b.textContent), ['Undo']);
+  },
+
+  // The frame's own height can't be the measure: a page always fills its frame,
+  // so a card that got shorter (Undo, say) would leave empty space below it.
+  async view_reports_a_smaller_size_when_its_content_shrinks() {
+    const view = await connected({}, { serverTools: {} });
+    view.document.body.height = 300;
+    view.deliver(toolResult({ saved: true, card: card({ id: 'n', created_at: minutesAgo(0) }) }));
+    const lastHeight = () => view.sent.filter(m => m.method === 'ui/notifications/size-changed').at(-1).params.height;
+    assert.equal(lastHeight(), 300);
+    view.root.byClass('action')[0].click();
+    const undo = view.sent.filter(m => m.method === 'tools/call').at(-1);
+    view.document.documentElement.scrollHeight = 300;
+    view.document.body.height = 98;
+    view.deliver({ jsonrpc: '2.0', id: undo.id, result: { content: [], structuredContent: { deleted: true } } });
+    await view.settle();
+    assert.equal(lastHeight(), 98);
+  },
+
+  // The label shows only where Cardlake knows it, and it is text.
+  async view_labels_a_card_with_where_it_came_from() {
+    const view = await connected();
+    view.deliver(toolResult({ cards: [
+      card({ id: 'a', saved_from: 'Claude' }),
+      card({ id: 'b', saved_from: null }),
+      card({ id: 'c', saved_from: '<b>Sneaky</b>', created_at: null }),
+    ], next_cursor: null, view: 'active', integrations: [], stats: {} }));
+    const [labelled, plain, hostile] = view.root.byClass('card');
+    assert.match(labelled.byClass('added')[0].textContent, /^Added .* · From Claude$/);
+    assert.doesNotMatch(plain.textContent, /From /);
+    assert.equal(hostile.byClass('added')[0].textContent, 'From <b>Sneaky</b>');
+  },
+
+  // Each card has the feed's type tile, and the old purple is gone.
+  async view_uses_cardlake_blue_and_a_type_tile() {
+    const view = await connected();
+    view.deliver(toolResult({ cards: [card({ id: 'a', type: 'bookmark' }), card({ id: 'b', type: 'not_a_type' })], next_cursor: null, view: 'active', integrations: [], stats: {} }));
+    const [known, unknown] = view.root.byClass('card');
+    assert.ok(known.byClass('tile-bookmark').length === 1);
+    assert.ok(known.findAll(node => node.tagName === 'PATH').length >= 1);
+    assert.ok(unknown.findAll(node => node.tagName === 'PATH').length >= 1, 'an unknown type still gets an icon');
+    const html = CARDS_VIEW_HTML;
+    assert.doesNotMatch(html, /7c5cff/i);
+    assert.match(html, /#4a86e9/);
+    assert.match(html, /#42b3e7/);
   },
 
   // Failures say why on the card and leave its state as it was.

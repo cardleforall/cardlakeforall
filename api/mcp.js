@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
   try {
     const { StreamableHTTPServerTransport } = await import('@modelcontextprotocol/sdk/server/streamableHttp.js');
 
-    const server = await createMcpServer(tenant, oauthAuthorization?.scopes);
+    const server = await createMcpServer(tenant, oauthAuthorization?.scopes, oauthAuthorization?.client);
 
     // Fresh server + transport per request: this function has no persistent
     // state between invocations, so there is no session to reuse or reconnect.

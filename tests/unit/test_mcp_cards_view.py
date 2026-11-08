@@ -15,7 +15,9 @@ VIEW_URI = "ui://cardle/cards.html"
 MIME = "text/html;profile=mcp-app"
 OPENAI_VIEW_URI = "ui://cardle/cards-openai.html"
 OPENAI_MIME = "text/html+skybridge"
-VIEW_TOOLS = {"list_feed", "search_cards", "get_card"}
+READ_VIEW_TOOLS = {"list_feed", "search_cards", "get_card"}
+CREATE_TOOLS = {"create_reminder", "create_learning", "create_work_item", "create_family_update", "create_bookmark", "create_talking_point"}
+VIEW_TOOLS = READ_VIEW_TOOLS | CREATE_TOOLS
 SCENARIOS = ROOT / "tests" / "unit" / "mcp_view_scenarios.js"
 
 INSPECT_SCRIPT = r'''
@@ -133,7 +135,7 @@ class CardsViewServerTests(unittest.TestCase):
     def test_read_only_grant_gets_the_view_too(self):
         self.assertEqual(self.html("readOnly"), self.html())
         pointing = {tool["name"] for tool in self.seen["readOnly"]["tools"] if (tool.get("_meta") or {}).get("ui")}
-        self.assertEqual(pointing, VIEW_TOOLS)
+        self.assertEqual(pointing, READ_VIEW_TOOLS)
 
 
 class CardsViewProtocolTests(unittest.TestCase):
@@ -182,6 +184,24 @@ class CardsViewProtocolTests(unittest.TestCase):
 
     def test_view_shows_a_work_cards_checklist(self):
         self.run_scenario("view_shows_a_work_cards_checklist")
+
+    def test_view_shows_a_saved_card_with_undo(self):
+        self.run_scenario("view_shows_a_saved_card_with_undo")
+
+    def test_view_keeps_a_saved_card_when_undo_fails(self):
+        self.run_scenario("view_keeps_a_saved_card_when_undo_fails")
+
+    def test_view_stops_offering_undo_once_a_saved_card_is_old(self):
+        self.run_scenario("view_stops_offering_undo_once_a_saved_card_is_old")
+
+    def test_view_reports_a_smaller_size_when_its_content_shrinks(self):
+        self.run_scenario("view_reports_a_smaller_size_when_its_content_shrinks")
+
+    def test_view_labels_a_card_with_where_it_came_from(self):
+        self.run_scenario("view_labels_a_card_with_where_it_came_from")
+
+    def test_view_uses_cardlake_blue_and_a_type_tile(self):
+        self.run_scenario("view_uses_cardlake_blue_and_a_type_tile")
 
 
 if __name__ == "__main__":

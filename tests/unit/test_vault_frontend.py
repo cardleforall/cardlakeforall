@@ -21,6 +21,17 @@ AURORA_FEED_CSS = ROOT / "public" / "vault" / "assets" / "aurora-feed.css"
 
 
 class VaultFrontendTests(unittest.TestCase):
+    def test_a_feed_card_says_which_ai_saved_it_only_when_known(self):
+        js = source(AURORA_FEED_JS)
+        # The name is escaped like all card text, and a card without one has
+        # no label at all.
+        self.assertIn("${card.saved_from ? ` · From ${esc(card.saved_from)}` : ''}", js)
+
+    def test_the_privacy_page_says_only_the_assistants_name_is_stored(self):
+        text = source(ROOT / "public" / "privacy.html")
+        self.assertIn("labelled with that assistant's name", text)
+        self.assertIn("stores only the name, not your conversation", text)
+
     def test_empty_feed_keeps_its_controls_at_the_top(self):
         css = source(AURORA_FEED_CSS)
         # `margin:auto` on the grid item consumes vertical free space when the
