@@ -120,7 +120,7 @@ async function issueTokenPair(sql, authorization) {
   const refreshToken = crypto.randomBytes(48).toString('base64url');
   await sql`insert into oauth_refresh_tokens (token_hash, user_email, client_id, resource, scope, expires_at) values (${oauth.hashToken(refreshToken)}, ${authorization.user_email}, ${authorization.client_id}, ${authorization.resource}, ${scopes.join(' ')}, now() + (${oauth.REFRESH_TTL_SECONDS} * interval '1 second'))`;
   return {
-    access_token: oauth.createAccessToken(authorization.user_email, scopes, authorization.resource),
+    access_token: oauth.createAccessToken(authorization.user_email, scopes, authorization.resource, authorization.client_id),
     token_type: 'Bearer',
     expires_in: oauth.ACCESS_TTL_SECONDS,
     refresh_token: refreshToken,

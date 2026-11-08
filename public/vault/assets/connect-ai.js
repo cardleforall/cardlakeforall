@@ -1,4 +1,4 @@
-// The one copy of "how to connect Claude, ChatGPT or Gemini to Cardlake". The setup
+// The one copy of "how to connect Claude, ChatGPT, Gemini or Hermes to Cardlake". The setup
 // guide (mcp-setup.html), onboarding (welcome.html) and the vault's Connect AI
 // panel all render from here, so the steps can't drift apart.
 (function () {
@@ -41,6 +41,16 @@
         signInStep,
       ],
     },
+    hermes: {
+      name: 'Hermes',
+      where: 'Hermes Agent',
+      steps: [
+        `In <code>~/.hermes/config.yaml</code>, add:<pre><code>mcp_servers:\n  cardlake:\n    url: "${SERVER_ADDRESS}"\n    auth: oauth</code></pre>`,
+        'In a terminal, run <code>hermes mcp login cardlake</code>.',
+        signInStep,
+      ],
+      note: 'Hermes on a remote server? After you click <strong>Authorize</strong>, your browser shows a connection error. That&rsquo;s expected: copy the address from that page and paste it into the terminal where Hermes is waiting.',
+    },
   };
 
   const EXAMPLE_PROMPTS = [
@@ -48,6 +58,15 @@
     'Add a reminder to call the dentist tomorrow',
     'Show me my bookmarks tagged as tech',
     'Mark my “finish the report” work item as done',
+  ];
+
+  // Typed into Hermes, which reads its own conversations and adds the cards.
+  // They live here rather than on the MCP server, which every assistant shares.
+  const HERMES_PROMPTS = [
+    'Add up to 3 cards to Cardlake from today’s conversations. Note which conversation each came from, leave out passwords and keys, and list what you added.',
+    'Add up to 3 cards to Cardlake from yesterday’s conversations. Note which conversation each came from, leave out passwords and keys, and list what you added.',
+    'Add up to 3 cards to Cardlake from the past week’s conversations. Note which conversation each came from, leave out passwords and keys, and list what you added.',
+    'Every morning at 8, recap yesterday’s conversations and send it to me on Telegram. Leave out passwords and keys, and end by asking if I’d like to add up to 3 cards to Cardlake.',
   ];
 
   const escapeHtml = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -66,10 +85,11 @@
   function mount(root = document) {
     root.querySelectorAll('[data-connect-ai-steps]').forEach(el => { el.innerHTML = stepsHtml(el.dataset.connectAiSteps, el.dataset.listClass); });
     root.querySelectorAll('[data-connect-ai-prompts]').forEach(el => { el.innerHTML = promptsHtml(EXAMPLE_PROMPTS, el.dataset.listClass); });
+    root.querySelectorAll('[data-connect-ai-hermes-prompts]').forEach(el => { el.innerHTML = promptsHtml(HERMES_PROMPTS, el.dataset.listClass); });
     root.querySelectorAll('[data-connect-ai-address]').forEach(el => { el.textContent = SERVER_ADDRESS; });
   }
 
-  window.CardleConnectAI = { SERVER_ADDRESS, CLIENTS, EXAMPLE_PROMPTS, stepsHtml, promptsHtml, mount };
+  window.CardleConnectAI = { SERVER_ADDRESS, CLIENTS, EXAMPLE_PROMPTS, HERMES_PROMPTS, stepsHtml, promptsHtml, mount };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => mount());
   else mount();
 })();

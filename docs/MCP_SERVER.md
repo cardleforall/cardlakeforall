@@ -1,7 +1,7 @@
 # Connecting an AI assistant to Cardlake
 
 Cardlake has a built-in [MCP](https://modelcontextprotocol.io) server that lets an AI assistant
-(Claude, ChatGPT, Gemini, or anything else that speaks MCP) read and manage your cards directly.
+(Claude, ChatGPT, Gemini, Hermes, or anything else that speaks MCP) read and manage your cards directly.
 Ask it to add a reminder, check what's in your feed, or pull in your latest GitHub issues, and
 it can just do it.
 
@@ -50,6 +50,23 @@ Settings → Connectors (turn on Developer mode if needed) → Add connector →
 `https://<your-cardlake>/api/mcp`. Do **not** paste a Cardlake personal token: ChatGPT
 uses the OAuth sign-in screen instead. Sign in with your email and password and
 authorize access. ChatGPT stores the resulting short-lived OAuth token itself.
+
+**Hermes Agent**
+
+Add this to `~/.hermes/config.yaml`, then run `hermes mcp login cardlake` and sign in with your email and password:
+
+```yaml
+mcp_servers:
+  cardlake:
+    url: "https://<your-cardlake>/api/mcp"
+    auth: oauth
+```
+
+Hermes reads its own conversations, so a request like "Add up to 3 cards to Cardlake from yesterday's
+conversations" needs no plugin. Cards it adds through this sign-in show "From Hermes" in the feed. It can
+also connect with a personal token (`headers: { Authorization: "Bearer ${env:CARDLAKE_TOKEN}" }`), but those
+cards carry no label. Those prompts live in Connect AI (`public/vault/assets/connect-ai.js`), not on the MCP
+server, which every assistant shares.
 
 **Gemini (CLI or app)**
 Add an MCP server entry pointing at the server address, with an `Authorization: Bearer
@@ -177,6 +194,10 @@ For whoever runs or develops this deployment.
   `days`) / `unsnooze_card` and the card type's `delete_*` tool through the host (`tools/call`),
   the same tools the model uses (so a read-only grant gets an error on the card, not a write).
   Delete asks for confirmation on the card before it calls anything.
+  The `create_*` tools show the card they saved through the same view (`saved: true` on the
+  result), with Undo, which calls the same `delete_*` tool without asking, since the person
+  has just seen what was saved. After ten minutes (a reopened chat replays the result) it's an
+  ordinary card whose Delete asks first. Read-only grants don't have these tools.
   After each change, if the host supports `updateModelContext`, it tells the model what changed.
   `tests/unit/mcp_view_scenarios.js` drives it as a host would. ChatGPT's Apps SDK keys off its
   own resource MIME type (`text/html+skybridge`) rather than the MCP Apps one above, so the same
@@ -188,6 +209,12 @@ For whoever runs or develops this deployment.
 - **Prompts** (`api/_lib/mcp-prompts.js`): `daily_review`, `weekly_recap`, `find_card`. They're
   plain instructions that name read tools, the same for every account (never account data),
   and are registered for every grant, read-only included.
+- **Where a card came from**: a card saved through OAuth from a known client is labelled with
+  that client's name (`saved_from`: Claude, Claude Code, ChatGPT, Codex or Gemini), read from
+  the signed access token, never from the request. It's stored on `feed_state`, set once when
+  the card is created and returned with the card. Personal access tokens, other clients and
+  cards added on the website have no label. Only the name is kept, nothing about the
+  conversation. A save still works if the label can't be written, as before the migration.
 - **What results contain**: only what the assistant asked about. `create_*` / `update_*`
   return the card without `user_email`, `sort_order`, `updated_at` or `deleted_at`; feed
   actions return `{ card_type, card_id, pinned_at, liked_at, snoozed_until }` rather than the
@@ -228,7 +255,7 @@ rather than picking one:
 - **OAuth 2.1 + PKCE** exists only for connector-style clients that render
   their own "Connect" UI and cannot accept a user-supplied header at all.
   Today that's Claude.ai / Claude Desktop and ChatGPT (`api/_lib/oauth.js`
-  registers both client IDs, plus Codex's loopback flow). Cardlake exposes
+  registers both client IDs, plus the loopback flows of Codex and Hermes). Cardlake exposes
   OAuth 2.1 protected-resource and authorization-server metadata, uses
   authorization-code + PKCE, and signs the resulting short-lived (one-hour)
   access token; the token endpoint also issues an opaque rotating refresh

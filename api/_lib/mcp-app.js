@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 // The MCP Apps view (extension io.modelcontextprotocol/ui, spec 2026-01-26):
-// hosts that support it render list_feed, search_cards and get_card results
-// as Cardlake cards instead of text. Hosts that don't simply ignore the tool
+// hosts that support it render list_feed, search_cards, get_card and create
+// tool results as Cardlake cards instead of text. Hosts that don't simply ignore the tool
 // _meta below and show the text as before.
 //
 // The official @modelcontextprotocol/ext-apps helpers need MCP SDK v2 (Cardlake
@@ -50,20 +50,20 @@ const VIEW_CONTENT_META = { ui: { csp: WIDGET_CSP } };
 const OPENAI_RESOURCE_META = {
   ...VIEW_CONTENT_META,
   'openai/widgetCSP': OPENAI_WIDGET_CSP,
-  'openai/widgetDescription': 'Shows Cardlake cards from the feed or a search, with pin and like buttons.',
+  'openai/widgetDescription': 'Shows Cardlake cards from the feed or a search, with pin and like buttons, and a card just saved, with Undo.',
 };
 
 function registerCardsView(server) {
   server.registerResource('cardle_cards', CARDS_VIEW_URI, {
     title: 'Cardlake cards',
-    description: 'Shows cards from list_feed, search_cards and get_card as Cardlake cards.',
+    description: 'Shows cards from list_feed, search_cards, get_card and the create tools as Cardlake cards.',
     mimeType: MCP_APP_MIME_TYPE,
   }, async () => ({
     contents: [{ uri: CARDS_VIEW_URI, mimeType: MCP_APP_MIME_TYPE, text: CARDS_VIEW_HTML, _meta: VIEW_CONTENT_META }],
   }));
   server.registerResource('cardle_cards_openai', CARDS_VIEW_URI_OPENAI, {
     title: 'Cardlake cards',
-    description: 'Shows cards from list_feed, search_cards and get_card as Cardlake cards (ChatGPT Apps SDK).',
+    description: 'Shows cards from list_feed, search_cards, get_card and the create tools as Cardlake cards (ChatGPT Apps SDK).',
     mimeType: OPENAI_WIDGET_MIME_TYPE,
     _meta: { 'openai/outputTemplate': CARDS_VIEW_URI_OPENAI, 'openai/widgetAccessible': true, ...OPENAI_RESOURCE_META },
   }, async () => ({

@@ -476,7 +476,7 @@
       ${recallView ? '' : `<div class="aurora-swipe-bg aurora-swipe-right" aria-hidden="true">↘ Snooze</div><div class="aurora-swipe-bg aurora-swipe-left" aria-hidden="true">${repeats(card) ? 'Done ↙' : isGithubIssue(card) ? 'Remove ↙' : card.type === 'reminder' ? 'Complete ↙' : 'Delete ↙'}</div>`}
       <div class="aurora-card-inner">
         ${pattern}
-        <div class="aurora-card-top"><span class="aurora-type-badge" style="background:${type[2]}">${type[0]}${reminderRingHtml(timing)}</span><div class="aurora-card-heading"><span>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</span><h3>${esc(titleOf(card))}</h3>${card.created_at ? `<small class="aurora-card-date">Added ${esc(formatDay(card.created_at))}</small>` : ''}${trialHtml(card)}</div>${pinButton}<button type="button" class="aurora-heart ${liked ? 'is-liked' : ''}" data-like aria-label="${liked ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${liked}">♥</button></div>
+        <div class="aurora-card-top"><span class="aurora-type-badge" style="background:${type[2]}">${type[0]}${reminderRingHtml(timing)}</span><div class="aurora-card-heading"><span>${type[1]}${subtitle ? `: ${esc(subtitle)}` : ''}</span><h3>${esc(titleOf(card))}</h3>${card.created_at ? `<small class="aurora-card-date">Added ${esc(formatDay(card.created_at))}${card.saved_from ? ` · From ${esc(card.saved_from)}` : ''}</small>` : ''}${trialHtml(card)}</div>${pinButton}<button type="button" class="aurora-heart ${liked ? 'is-liked' : ''}" data-like aria-label="${liked ? 'Unlike' : 'Like'} ${esc(titleOf(card))}" aria-pressed="${liked}">♥</button></div>
         ${card.body ? `<p>${esc(card.body)}</p>` : ''}
         ${calendarLinkHtml(card, { inFeed: true })}
         ${workProgressHtml(card)}

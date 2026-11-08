@@ -55,3 +55,24 @@ class McpToolResultTests(unittest.TestCase):
 
     def test_reminder_tools_support_recurrence(self):
         self.run_scenario("reminder_tools_support_recurrence")
+
+    def test_saved_cards_are_labelled_with_the_client_that_saved_them(self):
+        self.run_scenario("saved_cards_are_labelled_with_the_client_that_saved_them")
+
+    def test_cards_from_unknown_clients_have_no_label(self):
+        self.run_scenario("cards_from_unknown_clients_have_no_label")
+
+    def test_saving_and_reading_work_before_the_migration(self):
+        self.run_scenario("saving_and_reading_work_before_the_migration")
+
+    def test_reading_works_on_a_database_missing_several_columns(self):
+        self.run_scenario("reading_works_on_a_database_missing_several_columns")
+
+    def test_undo_removes_a_saved_card_of_every_type(self):
+        self.run_scenario("undo_removes_a_saved_card_of_every_type")
+
+    def test_a_real_request_is_labelled_from_its_signed_token(self):
+        self.run_scenario("a_real_request_is_labelled_from_its_signed_token")
+
+    def test_a_tool_call_cannot_choose_its_own_label(self):
+        self.run_scenario("a_tool_call_cannot_choose_its_own_label")

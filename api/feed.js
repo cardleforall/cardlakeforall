@@ -113,6 +113,7 @@ function normalize(type, row) {
     remind_later_until: row.remind_later_until || null,
     liked_at: row.liked_at || null,
     pinned_at: row.pinned_at || null,
+    saved_from: row.saved_from || null,
     sort_order: Number(row.feed_sort_order || 0),
   };
   if (type === 'learning') return { ...base, title: row.title, subtitle: siteLabel(row.url), body: row.notes || '', metadata: { status: row.status, category: row.category, url: row.url || '' }, actions: ['open', 'watched', 'skimmed', 'remind_later', 'pin', 'dismiss'] };
@@ -157,6 +158,37 @@ function isPageCursor(cursor) {
 }
 
 async function selectState(sql, tenant) {
+  try {
+    return await sql`select item_type, item_id, dismissed_at, pinned_at, liked_at, remind_later_until, reviewed_at, saved_from, sort_order as feed_sort_order from feed_state where user_email = ${tenant}`;
+  } catch (e) {
+    // Any missing column, not just this one: Postgres names only the first.
+    if (!e.message?.includes('does not exist')) throw e;
+    return selectStateBeforeSavedFrom(sql, tenant);
+  }
+}
+
+// Labels a card with the AI assistant that saved it. Cardlake only keeps this
+// label, nothing about the conversation. A card that was saved stays saved if
+// the label can't be written, as before the migration adds its column.
+async function recordSavedFrom(sql, tenant, itemType, itemId, savedFrom) {
+  if (!savedFrom) return null;
+  try {
+    await sql`insert into feed_state (user_email, item_type, item_id, saved_from) values (${tenant}, ${itemType}, ${itemId}, ${savedFrom}) on conflict (user_email, item_type, item_id) do update set saved_from = ${savedFrom}`;
+    return savedFrom;
+  } catch (e) {
+    if (!e.message?.includes('saved_from')) console.error('Could not label a saved card', e.message);
+    return null;
+  }
+}
+
+// A row just written, in the shape the feed and the card view use.
+function cardFromRow(type, row, savedFrom = null) {
+  const card = normalize(type, { ...row, saved_from: savedFrom });
+  card.metadata.attachments = [];
+  return card;
+}
+
+async function selectStateBeforeSavedFrom(sql, tenant) {
   try {
     return await sql`select item_type, item_id, dismissed_at, pinned_at, liked_at, remind_later_until, reviewed_at, sort_order as feed_sort_order from feed_state where user_email = ${tenant}`;
   } catch (e) {
@@ -667,6 +699,8 @@ module.exports.snoozedInFeed = snoozedInFeed;
 module.exports.buildFeedResponse = buildFeedResponse;
 module.exports.searchCards = searchCards;
 module.exports.getCard = getCard;
+module.exports.recordSavedFrom = recordSavedFrom;
+module.exports.cardFromRow = cardFromRow;
 module.exports.computeStreak = computeStreak;
 module.exports.localDate = localDate;
 module.exports.applyFeedAction = applyFeedAction;

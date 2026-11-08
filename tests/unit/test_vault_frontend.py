@@ -21,6 +21,17 @@ AURORA_FEED_CSS = ROOT / "public" / "vault" / "assets" / "aurora-feed.css"
 
 
 class VaultFrontendTests(unittest.TestCase):
+    def test_a_feed_card_says_which_ai_saved_it_only_when_known(self):
+        js = source(AURORA_FEED_JS)
+        # The name is escaped like all card text, and a card without one has
+        # no label at all.
+        self.assertIn("${card.saved_from ? ` · From ${esc(card.saved_from)}` : ''}", js)
+
+    def test_the_privacy_page_says_only_the_assistants_name_is_stored(self):
+        text = source(ROOT / "public" / "privacy.html")
+        self.assertIn("labelled with that assistant's name", text)
+        self.assertIn("stores only the name, not your conversation", text)
+
     def test_empty_feed_keeps_its_controls_at_the_top(self):
         css = source(AURORA_FEED_CSS)
         # `margin:auto` on the grid item consumes vertical free space when the
@@ -1754,7 +1765,8 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         self.assertIn('<button type="button" class="cardle-connect-pick" data-pick="claude">', modal)
         self.assertLess(modal.index('data-pick="claude"'), modal.index('data-pick="chatgpt"'))
         self.assertLess(modal.index('data-pick="chatgpt"'), modal.index('data-pick="gemini"'))
-        self.assertLess(modal.index('data-pick="gemini"'), modal.index('data-pick="token"'))
+        self.assertLess(modal.index('data-pick="gemini"'), modal.index('data-pick="hermes"'))
+        self.assertLess(modal.index('data-pick="hermes"'), modal.index('data-pick="token"'))
         self.assertIn("function openApiTokensModal(opener, view = 'pick') {", js)
         self.assertIn("<code data-server-address>${escapeHtml(SERVER_ADDRESS)}</code>", modal)
         self.assertIn('<div data-connect-view="claude" hidden>${addressHtml}', modal)
@@ -1763,11 +1775,21 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         self.assertNotIn("claude.ai/directory", modal)
         self.assertIn("modal.querySelectorAll('.cardle-token-address').forEach(row => wireCopy(row.querySelector('[data-copy-server]'), row.querySelector('[data-server-address]')));", modal)
 
+    def test_hermes_prompts_stay_off_the_server_other_assistants_share(self):
+        # Prompts that review past chats are Hermes' own setup text in the web
+        # app, never something the MCP server offers every assistant.
+        connect_ai = source(ROOT / "public" / "vault" / "assets" / "connect-ai.js")
+        self.assertIn("hermes mcp login cardlake", connect_ai)
+        self.assertIn("Add up to 3 cards to Cardlake from yesterday’s conversations.", connect_ai)
+        self.assertIn("data-connect-ai-hermes-prompts", source(ROOT / "public" / "mcp-setup.html"))
+        server = "".join(source(ROOT / "api" / "_lib" / name) for name in ("mcp-prompts.js", "mcp-server.js", "mcp-tools.js"))
+        self.assertNotIn("conversations", server.lower())
+
     def test_connect_ai_steps_through_one_choice_and_watches_for_the_connection(self):
         js = source(VAULT_JS)
         modal = js_block(js, "function openApiTokensModal(", "\n  // A brand-new account goes through onboarding")
         markup = modal[modal.index("modal.innerHTML = `"):modal.index("document.body.appendChild(modal);")]
-        view_names = ("pick", "claude", "chatgpt", "gemini", "token")
+        view_names = ("pick", "claude", "chatgpt", "gemini", "hermes", "token")
         start = modal.index("const showView = (view, focus) => {")
         functions = modal[start:modal.index("    showView(view, ", start)]
         script = r"""
@@ -1776,7 +1798,7 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
           const make = attrs => ({ hidden: false, dataset: {}, focused: 0, focus() { this.focused += 1; }, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; }, querySelector: () => null, ...attrs });
           const firsts = {};
           const views = Object.fromEntries(VIEWS.map(name => [name, make({ dataset: { connectView: name }, querySelector: () => (firsts[name] = firsts[name] || make({})) })]));
-          const picks = ['claude', 'chatgpt', 'gemini', 'token'].map(name => make({ dataset: { pick: name } }));
+          const picks = ['claude', 'chatgpt', 'gemini', 'hermes', 'token'].map(name => make({ dataset: { pick: name } }));
           const back = make({}), progress = make({});
           const modal = {
             querySelectorAll: selector => (selector === '[data-connect-view]' ? Object.values(views) : selector === '[data-pick]' ? picks : []),
@@ -1806,6 +1828,9 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
           assert.deepEqual(visible(), ['gemini'], 'Gemini is pasted in like ChatGPT');
           assert.equal(progress.hidden, false, 'Gemini shows the waiting status');
           picks[3].listeners.click();
+          assert.deepEqual(visible(), ['hermes'], 'Hermes has its own steps');
+          assert.equal(progress.hidden, false, 'Hermes shows the waiting status');
+          picks[4].listeners.click();
           assert.deepEqual(visible(), ['token']);
           assert.equal(progress.hidden, true, 'tokens have nothing to wait for');
         """.replace("VIEWS", json.dumps(list(view_names))).replace("FUNCTIONS", json.dumps(functions))
@@ -1819,6 +1844,8 @@ process.stdout.write(JSON.stringify({ active: pages.find(p => p.active).id, push
         self.assertIn("${stepsHtml('claude')}", markup)
         self.assertIn("${stepsHtml('chatgpt')}", markup)
         self.assertIn("${stepsHtml('gemini')}", markup)
+        self.assertIn("${stepsHtml('hermes')}", markup)
+        self.assertIn("${promptsHtml(HERMES_PROMPTS)}", markup)
         self.assertIn('<div data-connect-prompts hidden><h4>Now try asking</h4>', markup)
         self.assertLess(markup.index('data-connect-view="token" hidden'), markup.index('class="cardle-token-new"'))
         self.assertLess(markup.index('class="cardle-token-new"'), markup.index("Advanced: sync token"))

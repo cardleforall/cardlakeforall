@@ -6,8 +6,9 @@
 <title>Cardlake cards</title>
 <!--
   The MCP Apps view (spec 2026-01-26) that Claude, ChatGPT and other hosts
-  render for list_feed, search_cards and get_card results. It is served as
-  the ui://cardle/cards.html resource (api/_lib/mcp-app.js).
+  render for list_feed, search_cards, get_card and create tool results. It is
+  served as the ui://cardle/cards.html resource (api/_lib/mcp-app.js). Its look
+  follows the feed cards in public/vault/assets/aurora-feed.js and .css.
 
   Self-contained on purpose: no external scripts, styles, fonts, images or
   network calls, so it runs under the host's strictest default CSP. Card
@@ -21,57 +22,80 @@
   the card first, because a deleted card can't be restored from the app;
   the model is told to confirm before deleting, and a button mustn't skip
   that. Hosts that can't get the same cards, read-only.
+
+  A card a create tool just saved offers only Undo, which is that same delete
+  without the question: the person is looking at what was saved a moment ago.
+  After ten minutes it shows as an ordinary card instead.
 -->
 <style>
   :root {
     color-scheme: light dark;
-    --cardle-accent: #7c5cff;
+    /* Cardlake blue. The accent is darker or lighter than the brand gradient
+       so that it stays readable as text on either theme. */
+    --cardle-gradient: linear-gradient(135deg, #4a86e9, #42b3e7);
+    --cardle-accent: light-dark(#2f6fd6, #7fb0f5);
     /* Fallbacks for the host's standard theme variables (see the MCP Apps
        spec, "Theming"); a host that passes its own overrides these. */
-    --color-background-primary: light-dark(#ffffff, #18171c);
-    --color-background-secondary: light-dark(#f6f5fb, #222128);
-    --color-text-primary: light-dark(#17151f, #f3f2f7);
-    --color-text-secondary: light-dark(#5c5870, #b4b0c4);
-    --color-border-primary: light-dark(#e4e1ee, #34323c);
+    --color-background-primary: light-dark(#ffffff, #151a21);
+    --color-background-secondary: light-dark(#f7f9fc, #1c232c);
+    --color-text-primary: light-dark(#17202b, #edf1f6);
+    --color-text-secondary: light-dark(#5a6675, #a3afbd);
+    --color-border-primary: light-dark(#dde3ea, #2f3945);
     --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --border-radius-md: 10px;
+    --border-radius-card: 16px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: transparent; }
   body { font: 14px/1.45 var(--font-sans); color: var(--color-text-primary); padding: 4px; }
   .summary { color: var(--color-text-secondary); font-size: 12px; margin: 0 2px 8px; }
-  .cards { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .cards { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
   .card {
     background: var(--color-background-secondary);
     border: 1px solid var(--color-border-primary);
-    border-left: 3px solid var(--cardle-accent);
-    border-radius: var(--border-radius-md);
-    padding: 10px 12px;
+    border-radius: var(--border-radius-card);
+    padding: 14px;
     min-width: 0;
   }
-  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
-  .type { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--cardle-accent); }
-  .badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--color-border-primary); color: var(--color-text-secondary); }
-  .title { font-weight: 600; margin: 0; overflow-wrap: anywhere; }
-  .subtitle { color: var(--color-text-secondary); font-size: 12px; margin: 2px 0 0; overflow-wrap: anywhere; }
-  .body { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .saved-note { color: var(--cardle-accent); font-size: 12px; font-weight: 700; margin: 0 0 10px; }
+  .top { display: flex; align-items: flex-start; gap: 10px; }
+  .tile {
+    flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center;
+    border-radius: 10px; color: #fff; background: var(--cardle-gradient);
+  }
+  .tile-reminder { background: linear-gradient(135deg, oklch(60% .14 230), oklch(66% .12 212)); }
+  .tile-learning { background: linear-gradient(135deg, oklch(52% .17 262), oklch(58% .15 250)); }
+  .tile-kanban { background: linear-gradient(135deg, oklch(34% .03 265), oklch(46% .04 265)); }
+  .tile-work { background: linear-gradient(135deg, oklch(48% .18 262), oklch(54% .16 255)); }
+  .tile-family { background: linear-gradient(135deg, oklch(56% .15 245), oklch(62% .13 232)); }
+  .tile-bookmark { background: linear-gradient(135deg, oklch(50% .16 258), oklch(56% .14 245)); }
+  .tile-talking_point { background: linear-gradient(135deg, oklch(54% .16 250), oklch(60% .14 238)); }
+  .tile-file { background: linear-gradient(135deg, oklch(62% .12 215), oklch(68% .1 200)); }
+  .heading { min-width: 0; flex: 1; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 2px; }
+  .type { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+  .badge { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--color-border-primary); color: var(--color-text-secondary); }
+  .title { font-size: 15px; font-weight: 700; line-height: 1.3; margin: 0; overflow-wrap: anywhere; }
+  .added { color: var(--color-text-secondary); font-size: 11.5px; margin: 3px 0 0; }
+  .body { font-size: 13px; line-height: 1.5; color: var(--color-text-secondary); margin: 9px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .open {
-    margin-top: 8px; font: inherit; font-size: 12px; cursor: pointer;
+    margin-top: 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     color: var(--cardle-accent); background: none; border: 0; padding: 0;
   }
   .open:hover, .open:focus-visible { text-decoration: underline; }
-  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
   .actions .open { margin-top: 0; margin-left: auto; }
   .action {
-    font: inherit; font-size: 12px; cursor: pointer; padding: 2px 10px; border-radius: 999px;
-    color: var(--color-text-primary); background: transparent; border: 1px solid var(--color-border-primary);
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 12px; border-radius: 999px;
+    color: var(--color-text-primary); background: var(--color-background-primary); border: 1px solid var(--color-border-primary);
   }
+  .action:hover:not(:disabled) { border-color: var(--cardle-accent); }
+  .action:focus-visible { outline: 2px solid var(--cardle-accent); outline-offset: 2px; }
   .action[aria-pressed="true"] { color: var(--cardle-accent); border-color: var(--cardle-accent); }
   .action:disabled { opacity: .55; cursor: default; }
   .action.danger { color: light-dark(#b42840, #ff8a99); border-color: currentColor; }
-  .choice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .choice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
   .prompt { color: var(--color-text-secondary); font-size: 12px; }
-  .checklist { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .checklist { margin: 9px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 13px; }
   .checklist li { overflow-wrap: anywhere; }
   .checklist li[data-done="true"] { color: var(--color-text-secondary); text-decoration: line-through; }
   .notice { color: var(--color-text-secondary); font-size: 12px; margin: 6px 0 0; }
@@ -91,6 +115,18 @@
     reminder: 'Reminder', learning: 'Learning', kanban: 'GitHub issue', work: 'Work item',
     family: 'Family', bookmark: 'Bookmark', talking_point: 'Misc', file: 'File',
   };
+  // The feed's icon for each card type (ICONS in aurora-feed.js), as path data.
+  const TYPE_ICONS = {
+    reminder: ['M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9', 'M10.3 21a1.94 1.94 0 0 0 3.4 0'],
+    learning: ['M2 4h7a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z', 'M22 4h-7a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h8z'],
+    work: ['M5 7h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z', 'M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M3 13h18'],
+    family: ['M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
+    bookmark: ['M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'],
+    talking_point: ['M4.5 3h4A1.5 1.5 0 0 1 10 4.5v4A1.5 1.5 0 0 1 8.5 10h-4A1.5 1.5 0 0 1 3 8.5v-4A1.5 1.5 0 0 1 4.5 3z', 'M15.5 3h4A1.5 1.5 0 0 1 21 4.5v4a1.5 1.5 0 0 1-1.5 1.5h-4A1.5 1.5 0 0 1 14 8.5v-4A1.5 1.5 0 0 1 15.5 3z', 'M4.5 14h4a1.5 1.5 0 0 1 1.5 1.5v4A1.5 1.5 0 0 1 8.5 21h-4A1.5 1.5 0 0 1 3 19.5v-4A1.5 1.5 0 0 1 4.5 14z', 'M15.5 14h4a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5v-4a1.5 1.5 0 0 1 1.5-1.5z'],
+    file: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6'],
+  };
+  // GitHub's mark is a filled shape, unlike the outlined icons above.
+  const GITHUB_ICON = 'M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.39-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z';
   const root = document.getElementById('root');
   // Set from the host's answer to ui/initialize.
   let canRunTools = false;
@@ -143,7 +179,9 @@
 
   let lastHeight = 0;
   function reportSize() {
-    const height = Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 0);
+    // The body, not the page: a page is never shorter than its frame, so a card
+    // that got shorter would keep the empty space.
+    const height = Math.ceil(document.body.getBoundingClientRect().height);
     if (height && height !== lastHeight) {
       lastHeight = height;
       notify('ui/notifications/size-changed', { height });
@@ -196,6 +234,32 @@
     return list;
   }
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function typeTile(type) {
+    const tile = el('span', `tile tile-${type}`);
+    tile.setAttribute('aria-hidden', 'true');
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    const filled = type === 'kanban';
+    const attributes = { width: 16, height: 16, viewBox: '0 0 24 24', fill: filled ? 'currentColor' : 'none', stroke: filled ? 'none' : 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
+    for (const [name, value] of Object.entries(attributes)) svg.setAttribute(name, value);
+    for (const data of filled ? [GITHUB_ICON] : TYPE_ICONS[type] || TYPE_ICONS.file) {
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', data);
+      svg.appendChild(path);
+    }
+    tile.appendChild(svg);
+    return tile;
+  }
+
+  // "Added 3 Nov \u00b7 From Claude", as far as the card knows either.
+  function addedLine(card) {
+    const date = card.created_at ? new Date(card.created_at) : null;
+    const parts = [];
+    if (date && !Number.isNaN(date.getTime())) parts.push(`Added ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`);
+    if (card.saved_from) parts.push(`From ${card.saved_from}`);
+    return parts.join(' \u00b7 ');
+  }
+
   function renderCard(card) {
     const item = el('li', 'card');
     fillCard(item, card);
@@ -206,17 +270,25 @@
   // it's answered or cancelled.
   function fillCard(item, card, notice, choice) {
     item.replaceChildren();
+    if (card.just_saved) item.appendChild(el('p', 'saved-note', '\u2713 Saved to Cardlake'));
+    const label = TYPE_LABELS[card.type] || 'Card';
     const meta = el('div', 'meta');
-    meta.appendChild(el('span', 'type', TYPE_LABELS[card.type] || 'Card'));
+    meta.appendChild(el('span', 'type', card.subtitle ? `${label}: ${card.subtitle}` : label));
     const badges = [];
     if (card.pinned_at) badges.push('Pinned');
     if (card.liked_at) badges.push('Liked');
     if (isSnoozed(card)) badges.push('Snoozed');
     if (isDone(card)) badges.push('Done');
     for (const badge of badges) meta.appendChild(el('span', 'badge', badge));
-    item.appendChild(meta);
-    item.appendChild(el('p', 'title', card.title || 'Untitled'));
-    if (card.subtitle) item.appendChild(el('p', 'subtitle', card.subtitle));
+    const heading = el('div', 'heading');
+    heading.appendChild(meta);
+    heading.appendChild(el('p', 'title', card.title || 'Untitled'));
+    const added = addedLine(card);
+    if (added) heading.appendChild(el('p', 'added', added));
+    const top = el('div', 'top');
+    top.appendChild(typeTile(card.type));
+    top.appendChild(heading);
+    item.appendChild(top);
     if (card.body) {
       const body = String(card.body);
       item.appendChild(el('p', 'body', body.length > BODY_LIMIT ? `${body.slice(0, BODY_LIMIT)}…` : body));
@@ -228,7 +300,9 @@
       return;
     }
     const actions = el('div', 'actions');
-    if (canRunTools && card.id && card.type) {
+    if (canRunTools && card.id && card.type && card.just_saved) {
+      if (DELETE_TOOLS[card.type]) actions.appendChild(plainButton('Undo', () => undoSave(item, card)));
+    } else if (canRunTools && card.id && card.type) {
       for (const kind of ['pin', 'like']) actions.appendChild(actionButton(item, card, kind));
       const later = remindLaterButton(item, card);
       if (later) actions.appendChild(later);
@@ -298,6 +372,10 @@
     }]);
   }
 
+  function undoSave(item, card) {
+    runAction(item, card, { tool: DELETE_TOOLS[card.type], verb: 'remove', done: 'removed', gone: 'Removed', detail: ' right after saving it', args: { id: card.id }, deletes: true });
+  }
+
   // Swaps the card's buttons for a question and its answers, plus Cancel,
   // which puts the card back as it was.
   function offerChoice(item, card, question, choices) {
@@ -353,7 +431,7 @@
   function showDeleted(item, card, step) {
     item.replaceChildren();
     item.setAttribute('data-deleted', 'true');
-    item.appendChild(el('p', 'notice', `Deleted "${card.title || 'Untitled'}".`));
+    item.appendChild(el('p', 'notice', `${step.gone || 'Deleted'} "${card.title || 'Untitled'}".`));
     tellModel(card, step);
     reportSize();
   }
@@ -368,11 +446,20 @@
     request('ui/update-model-context', { content: [{ type: 'text', text: changes.join('\n') }] }).catch(() => {});
   }
 
+  // Reopening a chat replays its results, perhaps long after the card was saved
+  // and edited. An older saved card is an ordinary card, whose Delete asks first.
+  const UNDO_MINUTES = 10;
+  function isJustSaved(data) {
+    return data.saved === true && Date.now() - new Date(data.card.created_at).getTime() < UNDO_MINUTES * 60000;
+  }
+
   function cardsFrom(result) {
     const data = result && result.structuredContent;
     if (!data || typeof data !== 'object') return null;
     if (Array.isArray(data.cards)) return { cards: data.cards, total: data.total, more: !!data.next_cursor };
-    if (data.card && typeof data.card === 'object') return { cards: [data.card], total: 1, more: false };
+    if (data.card && typeof data.card === 'object') {
+      return { cards: [isJustSaved(data) ? { ...data.card, just_saved: true } : data.card], total: 1, more: false };
+    }
     return null;
   }
 

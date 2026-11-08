@@ -462,6 +462,10 @@ const scenarios = {
     assert.equal(refreshed.code, 200, JSON.stringify(refreshed.body));
     assert.notEqual(refreshed.body.refresh_token, initial.body.refresh_token, 'refresh tokens must rotate');
     assert.equal(refreshed.body.scope, 'cardle.read', 'a narrow grant must stay narrow after refresh');
+    // Cards saved with either token are labelled with the client that signed in.
+    for (const { body } of [initial, refreshed]) {
+      assert.equal(oauth.resolveOAuthAuthorization({ headers: { authorization: `Bearer ${body.access_token}` } }).client, 'ChatGPT');
+    }
 
     // Rotation makes replays useless, while a client-id mismatch leaves the
     // legitimate client able to spend its own current token.

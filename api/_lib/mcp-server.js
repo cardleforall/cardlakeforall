@@ -30,18 +30,18 @@ const INSTRUCTIONS = [
   'Cardlake sends no notifications: a reminder is not pushed or emailed, it rises to the top of the feed once its due date passes. Don\'t tell the user they will be notified.',
   'Dates such as due_date take "YYYY-MM-DD" or an ISO 8601 timestamp with the user\'s UTC offset (e.g. 2026-10-05T09:00:00+05:30); a time without an offset is refused. Resolve relative dates like "tomorrow" in the user\'s own time zone. Card subtitles show times in UTC.',
   'Deleting a card removes it from Cardlake together with its pins, likes and attachments, and it cannot be restored from the app, so confirm with the user first. At most 3 cards can be pinned at once.',
-  'Results from list_feed, search_cards and get_card already render as interactive Cardlake cards in clients that support MCP Apps; other clients show the same data as plain text.',
+  'Results from list_feed, search_cards, get_card and the create tools already render as interactive Cardlake cards in clients that support MCP Apps; other clients show the same data as plain text.',
 ].join('\n\n');
 
 // Builds the MCP server for one request, scoped to one tenant. Kept apart from
 // the HTTP handler (api/mcp.js) so what a client sees on connect -- server
 // info, instructions, tools -- can be exercised without auth or a database.
-async function createMcpServer(tenant, scopes) {
+async function createMcpServer(tenant, scopes, clientName) {
   const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
   const server = new McpServer(SERVER_INFO, { instructions: INSTRUCTIONS });
   // OAuth clients receive only tools covered by their granted scope. Personal
   // access tokens retain the full Cardlake read/write toolset.
-  registerTools(server, tenant, scopes);
+  registerTools(server, tenant, scopes, clientName);
   registerPrompts(server);
   registerCardsView(server);
   return server;

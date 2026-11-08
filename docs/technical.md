@@ -740,6 +740,7 @@ ChatGPT, Codex).
 - **Clients**: an allowlist of known client-id URLs with their exact redirect
   URIs (ChatGPT, Claude) plus Codex's CIMD pattern restricted to
   `http://127.0.0.1:<port>/callback/<id>`, Claude Code's loopback callback,
+  Hermes (its published metadata URL as the client id, loopback ports 27890-27894),
   and Gemini (`cardlake-gemini`, redirect
   `https://oauth-redirect.googleusercontent.com/r/user_bound_custom-mcp-<google id>-<host>`,
   where `<host>` is this deployment's host with its dots as underscores,
