@@ -1,7 +1,7 @@
 # Connecting an AI assistant to Cardlake
 
 Cardlake has a built-in [MCP](https://modelcontextprotocol.io) server that lets an AI assistant
-(Claude, ChatGPT, Gemini, or anything else that speaks MCP) read and manage your cards directly.
+(Claude, ChatGPT, Gemini, Hermes, or anything else that speaks MCP) read and manage your cards directly.
 Ask it to add a reminder, check what's in your feed, or pull in your latest GitHub issues, and
 it can just do it.
 
@@ -50,6 +50,23 @@ Settings → Connectors (turn on Developer mode if needed) → Add connector →
 `https://<your-cardlake>/api/mcp`. Do **not** paste a Cardlake personal token: ChatGPT
 uses the OAuth sign-in screen instead. Sign in with your email and password and
 authorize access. ChatGPT stores the resulting short-lived OAuth token itself.
+
+**Hermes Agent**
+
+Add this to `~/.hermes/config.yaml`, then run `hermes mcp login cardlake` and sign in with your email and password:
+
+```yaml
+mcp_servers:
+  cardlake:
+    url: "https://<your-cardlake>/api/mcp"
+    auth: oauth
+```
+
+Hermes reads its own conversations, so a request like "Add up to 3 cards to Cardlake from yesterday's
+conversations" needs no plugin. Cards it adds through this sign-in show "From Hermes" in the feed. It can
+also connect with a personal token (`headers: { Authorization: "Bearer ${env:CARDLAKE_TOKEN}" }`), but those
+cards carry no label. Those prompts live in Connect AI (`public/vault/assets/connect-ai.js`), not on the MCP
+server, which every assistant shares.
 
 **Gemini (CLI or app)**
 Add an MCP server entry pointing at the server address, with an `Authorization: Bearer
@@ -238,7 +255,7 @@ rather than picking one:
 - **OAuth 2.1 + PKCE** exists only for connector-style clients that render
   their own "Connect" UI and cannot accept a user-supplied header at all.
   Today that's Claude.ai / Claude Desktop and ChatGPT (`api/_lib/oauth.js`
-  registers both client IDs, plus Codex's loopback flow). Cardlake exposes
+  registers both client IDs, plus the loopback flows of Codex and Hermes). Cardlake exposes
   OAuth 2.1 protected-resource and authorization-server metadata, uses
   authorization-code + PKCE, and signs the resulting short-lived (one-hour)
   access token; the token endpoint also issues an opaque rotating refresh

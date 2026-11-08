@@ -424,6 +424,7 @@ For a thin feed: one tap adds five fresh cards.
 | Claude.ai / Claude Desktop | Add custom connector `https://<your-cardlake>/api/mcp` → Cardlake's sign-in page → the owner's password → authorize. No token. |
 | ChatGPT | Settings → Connectors (Developer mode) → add the same URL → same sign-in. No token. |
 | Gemini | Customise → Connectors → Custom → paste the same URL → same sign-in. No token. |
+| Hermes | Add Cardlake to `~/.hermes/config.yaml` and run `hermes mcp login cardlake` to sign in with the owner's password. Cards it adds show "From Hermes". |
 | Claude Code, the Gemini CLI, scripts, others | Generate a **personal access token** in the Connect AI panel, then pass it as `Authorization: Bearer …`. |
 
 **Connect AI panel** (button next to your name) opens on a choice: **Claude**,

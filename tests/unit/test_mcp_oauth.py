@@ -1,4 +1,4 @@
-"""Contract tests for MCP OAuth discovery and PKCE (ChatGPT, Claude, Claude Code, Codex, Gemini)."""
+"""Contract tests for MCP OAuth discovery and PKCE (ChatGPT, Claude, Claude Code, Codex, Gemini, Hermes)."""
 from pathlib import Path
 import json
 import re
@@ -173,6 +173,48 @@ for (const metadata of [{}, { redirect_uris: [] }, { redirect_uris: 'x' }, { red
 // documents, they keep the ids the rest of the flow expects.
 assert(oauth.registerClient({ redirect_uris: [oauth.CLAUDE_REDIRECT_URI] }).client_id === oauth.CLAUDE_CLIENT_ID, 'Claude registration');
 assert(oauth.registerClient({ redirect_uris: [oauth.CHATGPT_REDIRECT_URI] }).client_id === oauth.CHATGPT_CLIENT_ID, 'ChatGPT registration');
+'''
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_hermes_signs_in_only_with_its_published_identity_and_callbacks(self):
+        script = r'''
+process.env.SESSION_SECRET = 'test-secret';
+const crypto = require('crypto');
+const oauth = require('./api/_lib/oauth');
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const challenge = crypto.createHash('sha256').update('a'.repeat(43)).digest('base64url');
+const authorize = (client_id, redirect_uri) => oauth.validateAuthorizationRequest({
+  response_type: 'code', client_id, redirect_uri, resource: oauth.RESOURCE,
+  code_challenge: challenge, code_challenge_method: 'S256',
+});
+for (const port of [27890, 27891, 27892, 27893, 27894]) {
+  for (const host of ['127.0.0.1', 'localhost']) {
+    const uri = `http://${host}:${port}/callback`;
+    const request = authorize(oauth.HERMES_CLIENT_ID, uri);
+    assert(request.clientId === oauth.HERMES_CLIENT_ID && request.redirectUri === uri, `Hermes callback ${uri} was rejected`);
+    assert(request.scopes.join(' ') === 'cardle.read cardle.write', 'Hermes sends no scope, so it gets the usual two');
+  }
+}
+for (const uri of ['http://127.0.0.1:27895/callback', 'http://127.0.0.1:3000/callback', 'http://127.0.0.1/callback', 'https://127.0.0.1:27890/callback',
+  'http://evil.example:27890/callback', 'http://localhost.evil.example:27890/callback', 'http://user@127.0.0.1:27890/callback',
+  'http://127.0.0.1:27890/other', 'http://127.0.0.1:27890/callback/extra', 'http://127.0.0.1:27890/callback?next=x', 'http://127.0.0.1:27890/callback#x', 'not a url']) {
+  assert(!oauth.isHermesClient(oauth.HERMES_CLIENT_ID, uri), `Hermes accepted ${uri}`);
+  let refused = false;
+  try { authorize(oauth.HERMES_CLIENT_ID, uri); } catch (error) { refused = error.oauth === 'invalid_client'; }
+  assert(refused, `authorize accepted ${uri}`);
+}
+for (const clientId of ['https://attacker.example/docs/oauth/client-metadata.json', 'https://nousresearch.github.io/hermes-agent/docs/oauth/client-metadata.json.evil', oauth.CLAUDE_CLIENT_ID]) {
+  assert(!oauth.isHermesClient(clientId, 'http://127.0.0.1:27890/callback'), `${clientId} accepted for a Hermes callback`);
+}
+assert(oauth.clientDisplayName(oauth.HERMES_CLIENT_ID) === 'Hermes', 'wrong consent name for Hermes');
+let registered = true;
+try { oauth.registerClient({ redirect_uris: ['http://127.0.0.1:27890/callback'] }); } catch (_) { registered = false; }
+assert(!registered, 'registration admitted a loopback callback');
+const on = token => ({ headers: { authorization: `Bearer ${token}` } });
+const signedIn = oauth.resolveOAuthAuthorization(on(oauth.createAccessToken('alice@example.test', ['cardle.write'], oauth.RESOURCE, oauth.HERMES_CLIENT_ID)));
+assert(signedIn.client === 'Hermes', 'cards saved through Hermes would lose their label');
+assert(signedIn.tenant === 'alice@example.test', 'a Hermes token lost its account');
 '''
         result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
