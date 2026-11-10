@@ -10,6 +10,8 @@ learnings, bookmarks and work follow-ups in one place you own: open source
 
 **[Get started](#get-started)** · [What it does](#what-it-does) · [Looking after your Cardlake](#looking-after-your-cardlake) · [For developers](#for-developers)
 
+Why it exists: [I wanted one place every AI could write to. So I built it.](https://builderjon.medium.com/i-wanted-one-place-every-ai-could-write-to-so-i-built-it-315cd88da4de) (on Medium)
+
 ## Get started
 
 Don't want to host it yourself? Use Cardlake at [cardlake.app](https://cardlake.app).
