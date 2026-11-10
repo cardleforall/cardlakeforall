@@ -53,6 +53,11 @@ https://github.com/user-attachments/assets/10d1ce6c-f12a-42bf-aed6-dba16530b934
 - **Talk to it from your AI.** Tell Claude or ChatGPT "remind me Wednesday at
   10" or "what's on today?" and it reads and writes your feed over
   [MCP](docs/MCP_SERVER.md). Every card type and action works from chat.
+- **In Telegram, with Hermes Agent.** The
+  [Cardlake plugin for Hermes](https://github.com/cardleforall/cardlake-hermes)
+  shows your cards in your Telegram chat with Done, Tomorrow and Undo buttons.
+  Connect Hermes to your own Cardlake from **Connect AI**, and the plugin's
+  links follow it.
 - **One feed for everything.** Reminders, learnings, work items, family
   updates, bookmarks and misc notes, with a progress bar and a streak.
 - **Snooze, pin, favorite.** Not today? Snooze a card and it comes back
